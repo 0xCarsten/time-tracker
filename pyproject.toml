@@ -1,0 +1,32 @@
+[project]
+name = "zeiterfassung"
+version = "0.2.0"
+description = "Single-user CLI time tracking tool"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer[all]>=0.12",
+    "rich>=13",
+    "holidays>=0.46",
+    "openpyxl>=3.1",
+    "tomli-w>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+]
+
+[project.scripts]
+zeit = "zeiterfassung.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+]
