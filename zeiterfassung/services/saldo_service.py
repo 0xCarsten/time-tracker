@@ -74,7 +74,10 @@ class BalanceService:
         # call is_workday() from domain/rules.py directly, no EntryService dep).
         current = effective_from
         while current <= effective_to:
-            if is_workday(current, self._settings.state, self._settings.weekend_work) and current not in entry_dates:
+            if (
+                is_workday(current, self._settings.state, self._settings.weekend_work)
+                and current not in entry_dates
+            ):
                 total -= self._settings.daily_target_minutes
             current += datetime.timedelta(days=1)
 

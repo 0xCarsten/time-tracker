@@ -48,9 +48,7 @@ class Settings:
             ValueError: If weekly_hours is not positive.
         """
         if self.weekly_hours <= 0:
-            raise ValueError(
-                f"weekly_hours must be positive, got {self.weekly_hours}"
-            )
+            raise ValueError(f"weekly_hours must be positive, got {self.weekly_hours}")
         return int(self.weekly_hours / 5 * 60)
 
 

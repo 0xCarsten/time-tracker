@@ -25,7 +25,15 @@ class ExportService:
     Column layout: Date, Type, Start, End, Pause (h), Delta (h), Running Balance (h).
     """
 
-    HEADERS = ["Date", "Type", "Start", "End", "Pause (h)", "Delta (h)", "Running Balance (h)"]
+    HEADERS = [
+        "Date",
+        "Type",
+        "Start",
+        "End",
+        "Pause (h)",
+        "Delta (h)",
+        "Running Balance (h)",
+    ]
 
     def __init__(self, entry_service: EntryService) -> None:
         """
@@ -60,6 +68,7 @@ class ExportService:
 
         wb = openpyxl.Workbook()
         ws = wb.active
+        assert ws is not None
         ws.title = "Time Tracking"
 
         # Header row
@@ -75,7 +84,11 @@ class ExportService:
             row = [
                 result.date.isoformat(),
                 entry.entry_type.value if entry else "missing",
-                entry.start_time.strftime("%H:%M") if entry and entry.start_time else "",
+                (
+                    entry.start_time.strftime("%H:%M")
+                    if entry and entry.start_time
+                    else ""
+                ),
                 entry.end_time.strftime("%H:%M") if entry and entry.end_time else "",
                 round(entry.pause_minutes / 60, 2) if entry else 0.0,
                 round(result.delta_minutes / 60, 2),
@@ -86,7 +99,11 @@ class ExportService:
         # Summary row
         total_delta = sum(r.delta_minutes for r in results)
         summary = [
-            "TOTAL", "", "", "", "",
+            "TOTAL",
+            "",
+            "",
+            "",
+            "",
             round(total_delta / 60, 2),
             round(running_balance / 60, 2),
         ]

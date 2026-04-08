@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import datetime
 
-import pytest
 
 from zeiterfassung.config import Settings
 from zeiterfassung.domain.models import EntryType, TimeEntry
@@ -133,42 +132,54 @@ class TestBuildDayResults:
         repo = EntryRepository(db_conn)
 
         # Day 1: work +120
-        repo.insert(TimeEntry(
-            date=datetime.date(2026, 3, 16),
-            entry_type=EntryType.work,
-            start_time=datetime.time(9, 0),
-            end_time=datetime.time(19, 0),
-            pause_minutes=0,
-            daily_target_minutes=_TARGET,
-            created_at=_NOW, updated_at=_NOW,
-        ))
+        repo.insert(
+            TimeEntry(
+                date=datetime.date(2026, 3, 16),
+                entry_type=EntryType.work,
+                start_time=datetime.time(9, 0),
+                end_time=datetime.time(19, 0),
+                pause_minutes=0,
+                daily_target_minutes=_TARGET,
+                created_at=_NOW,
+                updated_at=_NOW,
+            )
+        )
         # Day 2: sick 0
-        repo.insert(TimeEntry(
-            date=datetime.date(2026, 3, 17),
-            entry_type=EntryType.sick,
-            pause_minutes=0,
-            daily_target_minutes=_TARGET,
-            created_at=_NOW, updated_at=_NOW,
-        ))
+        repo.insert(
+            TimeEntry(
+                date=datetime.date(2026, 3, 17),
+                entry_type=EntryType.sick,
+                pause_minutes=0,
+                daily_target_minutes=_TARGET,
+                created_at=_NOW,
+                updated_at=_NOW,
+            )
+        )
         # Day 3: Mar 18 — no entry (missing workday), delta = -480
         # Day 4: vacation 0
-        repo.insert(TimeEntry(
-            date=datetime.date(2026, 3, 19),
-            entry_type=EntryType.vacation,
-            pause_minutes=0,
-            daily_target_minutes=_TARGET,
-            created_at=_NOW, updated_at=_NOW,
-        ))
+        repo.insert(
+            TimeEntry(
+                date=datetime.date(2026, 3, 19),
+                entry_type=EntryType.vacation,
+                pause_minutes=0,
+                daily_target_minutes=_TARGET,
+                created_at=_NOW,
+                updated_at=_NOW,
+            )
+        )
         # Day 5: work +60
-        repo.insert(TimeEntry(
-            date=datetime.date(2026, 3, 20),
-            entry_type=EntryType.work,
-            start_time=datetime.time(9, 0),
-            end_time=datetime.time(18, 0),
-            pause_minutes=0,
-            daily_target_minutes=_TARGET,
-            created_at=_NOW, updated_at=_NOW,
-        ))
+        repo.insert(
+            TimeEntry(
+                date=datetime.date(2026, 3, 20),
+                entry_type=EntryType.work,
+                start_time=datetime.time(9, 0),
+                end_time=datetime.time(18, 0),
+                pause_minutes=0,
+                daily_target_minutes=_TARGET,
+                created_at=_NOW,
+                updated_at=_NOW,
+            )
+        )
 
         results = service.build_day_results(
             datetime.date(2026, 3, 16), datetime.date(2026, 3, 20)
@@ -179,18 +190,18 @@ class TestBuildDayResults:
 
         expected_deltas = [120, 0, -480, 0, 60]
         for i, (result, expected) in enumerate(zip(results, expected_deltas)):
-            assert result.delta_minutes == expected, (
-                f"Day {i+1}: expected delta={expected}, got {result.delta_minutes}"
-            )
+            assert (
+                result.delta_minutes == expected
+            ), f"Day {i+1}: expected delta={expected}, got {result.delta_minutes}"
 
         # Verify running saldo accumulates correctly
         running = 0
         expected_running = [120, 120, -360, -360, -300]
         for i, (result, expected) in enumerate(zip(results, expected_running)):
             running += result.delta_minutes
-            assert running == expected, (
-                f"Day {i+1}: expected running={expected}, got {running}"
-            )
+            assert (
+                running == expected
+            ), f"Day {i+1}: expected running={expected}, got {running}"
 
 
 class TestAddAndOverwriteEntry:

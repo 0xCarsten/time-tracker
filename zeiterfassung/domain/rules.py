@@ -43,21 +43,15 @@ def parse_time_range(raw: str) -> tuple[datetime.time, datetime.time]:
     raw = raw.strip()
     # Require exactly one "-" separator and HH:MM format (colon mandatory)
     if raw.count("-") != 1:
-        raise ValueError(
-            f"Invalid time range '{raw}': expected format HH:MM-HH:MM"
-        )
+        raise ValueError(f"Invalid time range '{raw}': expected format HH:MM-HH:MM")
     left, right = raw.split("-", 1)
     if not _HM_RE.match(left.strip()) or not _HM_RE.match(right.strip()):
-        raise ValueError(
-            f"Invalid time range '{raw}': expected format HH:MM-HH:MM"
-        )
+        raise ValueError(f"Invalid time range '{raw}': expected format HH:MM-HH:MM")
     try:
         start = datetime.time.fromisoformat(left.strip())
         end = datetime.time.fromisoformat(right.strip())
     except ValueError as exc:
-        raise ValueError(
-            f"Invalid time range '{raw}': {exc}"
-        ) from exc
+        raise ValueError(f"Invalid time range '{raw}': {exc}") from exc
     return start, end
 
 

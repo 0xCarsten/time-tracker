@@ -34,7 +34,9 @@ from zeiterfassung.services.entry_service import EntryService
 from zeiterfassung.services.export_service import ExportService
 from zeiterfassung.services.saldo_service import BalanceService
 
-app = typer.Typer(name="zeit", add_completion=True, help="zeiterfassung — time tracking CLI")
+app = typer.Typer(
+    name="zeit", add_completion=True, help="zeiterfassung — time tracking CLI"
+)
 console = Console()
 err_console = Console(stderr=True)
 
@@ -89,9 +91,7 @@ def _parse_date(date_str: str) -> datetime.date:
     try:
         return datetime.date.fromisoformat(date_str)
     except ValueError:
-        raise typer.BadParameter(
-            f"Date must be YYYY-MM-DD, got '{date_str}'"
-        )
+        raise typer.BadParameter(f"Date must be YYYY-MM-DD, got '{date_str}'")
 
 
 def _parse_optional_date(date_str: Optional[str]) -> Optional[datetime.date]:
@@ -131,7 +131,12 @@ def config(
         err_console.print("[bold red]Error:[/bold red] weekly_hours must be positive.")
         raise typer.Exit(code=1)
 
-    s = Settings(weekly_hours=weekly_hours, state=state, db_path=db_path or None, weekend_work=weekend_work)
+    s = Settings(
+        weekly_hours=weekly_hours,
+        state=state,
+        db_path=db_path or None,
+        weekend_work=weekend_work,
+    )
     save_settings(s)
     db_info = f"\nDB path:      {db_path}" if db_path else ""
     console.print(
@@ -143,11 +148,15 @@ def config(
 @app.command()
 def add(
     date_str: str = typer.Argument(help="Date as YYYY-MM-DD"),
-    entry_type: EntryType = typer.Argument(help="Entry type: work|sick|vacation|holiday|absent"),
+    entry_type: EntryType = typer.Argument(
+        help="Entry type: work|sick|vacation|holiday|absent"
+    ),
     time_range: Optional[str] = typer.Argument(
         default=None, help="Time range as HH:MM-HH:MM (required for work)"
     ),
-    pause: Optional[float] = typer.Option(None, help="Pause in decimal hours (e.g. 0.5)"),
+    pause: Optional[float] = typer.Option(
+        None, help="Pause in decimal hours (e.g. 0.5)"
+    ),
     note: Optional[str] = typer.Option(None, help="Optional note"),
 ) -> None:
     """Add a time entry for a given date."""
@@ -210,8 +219,12 @@ def add(
 @app.command()
 def edit(
     date_str: str = typer.Argument(help="Date as YYYY-MM-DD"),
-    entry_type: Optional[EntryType] = typer.Option(None, "--type", help="New entry type"),
-    time_range: Optional[str] = typer.Option(None, "--time", help="New time range HH:MM-HH:MM"),
+    entry_type: Optional[EntryType] = typer.Option(
+        None, "--type", help="New entry type"
+    ),
+    time_range: Optional[str] = typer.Option(
+        None, "--time", help="New time range HH:MM-HH:MM"
+    ),
     pause: Optional[float] = typer.Option(None, help="New pause in decimal hours"),
     note: Optional[str] = typer.Option(None, help="New note"),
 ) -> None:
@@ -232,9 +245,7 @@ def edit(
         if time_range is not None:
             merged_time_range = time_range
         elif existing.start_time and existing.end_time:
-            merged_time_range = (
-                f"{existing.start_time.strftime('%H:%M')}-{existing.end_time.strftime('%H:%M')}"
-            )
+            merged_time_range = f"{existing.start_time.strftime('%H:%M')}-{existing.end_time.strftime('%H:%M')}"
         else:
             merged_time_range = None
 
@@ -337,7 +348,9 @@ def _process_bulk_line(line: str, entry_service: EntryService) -> None:
 
 @app.command()
 def balance(
-    from_date: Optional[str] = typer.Option(None, "--from", help="Start date YYYY-MM-DD"),
+    from_date: Optional[str] = typer.Option(
+        None, "--from", help="Start date YYYY-MM-DD"
+    ),
     to_date: Optional[str] = typer.Option(None, "--to", help="End date YYYY-MM-DD"),
 ) -> None:
     """Show cumulative overtime balance."""
@@ -352,7 +365,9 @@ def balance(
 
 @app.command()
 def show(
-    week: Optional[int] = typer.Option(None, help="ISO week number (default: current week)"),
+    week: Optional[int] = typer.Option(
+        None, help="ISO week number (default: current week)"
+    ),
     month: Optional[int] = typer.Option(None, help="Month number 1-12"),
 ) -> None:
     """Show entries for current week (or specified week/month)."""
@@ -390,12 +405,16 @@ def show(
 
 @app.command(name="list")
 def list_entries(
-    from_date: Optional[str] = typer.Option(None, "--from", help="Start date YYYY-MM-DD"),
+    from_date: Optional[str] = typer.Option(
+        None, "--from", help="Start date YYYY-MM-DD"
+    ),
     to_date: Optional[str] = typer.Option(None, "--to", help="End date YYYY-MM-DD"),
 ) -> None:
     """List all entries in a date range."""
     today = datetime.date.today()
-    from_d = _parse_optional_date(from_date) or datetime.date(today.year, today.month, 1)
+    from_d = _parse_optional_date(from_date) or datetime.date(
+        today.year, today.month, 1
+    )
     to_d = _parse_optional_date(to_date) or today
 
     with _get_services() as (entry_service, _, __):
@@ -406,12 +425,16 @@ def list_entries(
 
 @app.command()
 def fill_missing(
-    from_date: Optional[str] = typer.Option(None, "--from", help="Start date YYYY-MM-DD"),
+    from_date: Optional[str] = typer.Option(
+        None, "--from", help="Start date YYYY-MM-DD"
+    ),
     to_date: Optional[str] = typer.Option(None, "--to", help="End date YYYY-MM-DD"),
 ) -> None:
     """Interactively fill missing workdays. Press Enter to skip any date."""
     today = datetime.date.today()
-    from_d = _parse_optional_date(from_date) or datetime.date(today.year, today.month, 1)
+    from_d = _parse_optional_date(from_date) or datetime.date(
+        today.year, today.month, 1
+    )
     to_d = _parse_optional_date(to_date) or today
 
     with _get_services() as (entry_service, _, __):
@@ -441,9 +464,13 @@ def fill_missing(
             if et == EntryType.work:
                 time_range = Prompt.ask("  Time range (HH:MM-HH:MM)", default="")
                 if not time_range:
-                    console.print("  [red]Time range required for work, skipping.[/red]")
+                    console.print(
+                        "  [red]Time range required for work, skipping.[/red]"
+                    )
                     continue
-                pause_str = Prompt.ask("  Pause in decimal hours (Enter for 0)", default="0")
+                pause_str = Prompt.ask(
+                    "  Pause in decimal hours (Enter for 0)", default="0"
+                )
                 try:
                     pause = float(pause_str)
                 except ValueError:
@@ -451,7 +478,10 @@ def fill_missing(
 
             try:
                 entry_service.add_entry(
-                    date=date, entry_type=et, time_range_raw=time_range, pause_decimal=pause
+                    date=date,
+                    entry_type=et,
+                    time_range_raw=time_range,
+                    pause_decimal=pause,
                 )
                 console.print(f"  [green]Added {et.value}.[/green]")
             except Exception as exc:  # noqa: BLE001
@@ -460,7 +490,9 @@ def fill_missing(
 
 @app.command()
 def export(
-    from_date: Optional[str] = typer.Option(None, "--from", help="Start date YYYY-MM-DD"),
+    from_date: Optional[str] = typer.Option(
+        None, "--from", help="Start date YYYY-MM-DD"
+    ),
     to_date: Optional[str] = typer.Option(None, "--to", help="End date YYYY-MM-DD"),
     output: Optional[Path] = typer.Option(None, help="Output .xlsx filename"),
 ) -> None:

@@ -66,7 +66,9 @@ class TestIsPublicHoliday:
         # Christmas 2021 was on Saturday
         result = is_public_holiday(datetime.date(2021, 12, 25), "BY")
         assert result is not None  # It is a holiday
-        assert is_workday(datetime.date(2021, 12, 25), "BY") is False  # But not a workday
+        assert (
+            is_workday(datetime.date(2021, 12, 25), "BY") is False
+        )  # But not a workday
 
     def test_easter_monday_2026(self):
         """Easter Monday 2026 (April 6) is a public holiday in Bavaria."""

@@ -8,7 +8,7 @@ The domain layer is I/O-free: no typer, rich, sqlite3, or openpyxl imports.
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 

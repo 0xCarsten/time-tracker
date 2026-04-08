@@ -20,11 +20,9 @@ def _validate_state(code: str) -> None:
     Raises:
         ValueError: If the code is not a valid subdivision (CRIT-001 fix).
     """
-    valid = sorted(holidays.Germany.subdivisions)
+    valid = sorted(holidays.country_holidays("DE").subdivisions)
     if code not in valid:
-        raise ValueError(
-            f"Invalid state code '{code}'; must be one of {valid}"
-        )
+        raise ValueError(f"Invalid state code '{code}'; must be one of {valid}")
 
 
 def get_holidays(year: int, state: str) -> set[datetime.date]:
@@ -42,7 +40,7 @@ def get_holidays(year: int, state: str) -> set[datetime.date]:
         ValueError: If state code is not valid.
     """
     _validate_state(state)
-    return set(holidays.Germany(state=state, years=year).keys())
+    return set(holidays.country_holidays("DE", subdiv=state, years=year).keys())
 
 
 def is_public_holiday(date: datetime.date, state: str) -> Optional[str]:
@@ -60,5 +58,5 @@ def is_public_holiday(date: datetime.date, state: str) -> Optional[str]:
         ValueError: If state code is not valid (GUD-001).
     """
     _validate_state(state)
-    de_holidays = holidays.Germany(state=state, years=date.year)
+    de_holidays = holidays.country_holidays("DE", subdiv=state, years=date.year)
     return de_holidays.get(date)

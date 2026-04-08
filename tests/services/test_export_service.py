@@ -8,13 +8,11 @@ Injects a real EntryService instance with pre-inserted entries into ExportServic
 from __future__ import annotations
 
 import datetime
-from pathlib import Path
 
 import openpyxl
-import pytest
 
 from zeiterfassung.config import Settings
-from zeiterfassung.domain.models import EntryType, TimeEntry
+from zeiterfassung.domain.models import EntryType
 from zeiterfassung.repository.entry_repo import EntryRepository
 from zeiterfassung.services.entry_service import EntryService
 from zeiterfassung.services.export_service import ExportService
@@ -58,9 +56,16 @@ class TestExportExcel:
 
         wb = openpyxl.load_workbook(out)
         ws = wb.active
+        assert ws is not None
         headers = [cell.value for cell in ws[1]]
         assert headers == [
-            "Date", "Type", "Start", "End", "Pause (h)", "Delta (h)", "Running Balance (h)"
+            "Date",
+            "Type",
+            "Start",
+            "End",
+            "Pause (h)",
+            "Delta (h)",
+            "Running Balance (h)",
         ]
 
     def test_empty_range_produces_only_header_and_summary(self, db_conn, tmp_path):
@@ -80,6 +85,7 @@ class TestExportExcel:
 
         wb = openpyxl.load_workbook(out)
         ws = wb.active
+        assert ws is not None
         # Row 1 = headers, Row 2 = TOTAL summary (no data rows since no workdays)
         assert ws.max_row == 2
         assert ws.cell(row=2, column=1).value == "TOTAL"
@@ -116,6 +122,7 @@ class TestExportExcel:
 
         wb = openpyxl.load_workbook(out)
         ws = wb.active
+        assert ws is not None
         # Row 1 = headers, Row 2 = data, Row 3 = TOTAL
         assert ws.cell(row=2, column=1).value == "2026-04-14"
         assert ws.cell(row=2, column=2).value == "sick"

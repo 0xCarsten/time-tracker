@@ -31,7 +31,7 @@ def get_db_path(override: Path | None = None) -> Path:
 
     if override is not None:
         path = override.expanduser().resolve()
-    elif (env := os.environ.get("TIMETRACK_DB")):
+    elif env := os.environ.get("TIMETRACK_DB"):
         path = Path(env).expanduser().resolve()
     else:
         path = Path.home() / ".zeiterfassung" / "zeit.db"
@@ -75,7 +75,8 @@ def create_schema(conn: sqlite3.Connection) -> None:
     Parameters:
         conn: An open SQLite connection.
     """
-    conn.executescript("""
+    conn.executescript(
+        """
         CREATE TABLE IF NOT EXISTS entries (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,
             date                 TEXT    NOT NULL,
@@ -90,7 +91,8 @@ def create_schema(conn: sqlite3.Connection) -> None:
             UNIQUE(date, entry_type)
         );
         PRAGMA user_version = 1;
-    """)
+    """
+    )
     conn.commit()
 
 

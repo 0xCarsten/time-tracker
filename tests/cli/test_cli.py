@@ -7,11 +7,8 @@ flow (CON-003 — no E2E tests at MVP). Uses in-memory approach via config mocki
 
 from __future__ import annotations
 
-import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from typer.testing import CliRunner
 
 from zeiterfassung.cli.app import app
@@ -31,7 +28,18 @@ class TestHelpCommands:
         """zeit --help output contains all expected subcommands (TASK-036)."""
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        for cmd in ["add", "edit", "delete", "bulk", "balance", "show", "list", "fill-missing", "export", "config"]:
+        for cmd in [
+            "add",
+            "edit",
+            "delete",
+            "bulk",
+            "balance",
+            "show",
+            "list",
+            "fill-missing",
+            "export",
+            "config",
+        ]:
             assert cmd in result.output, f"Command '{cmd}' missing from --help output"
 
     def test_add_help_exits_zero(self):
@@ -55,9 +63,12 @@ class TestBalanceCommand:
         """
         db_path = tmp_path / "test.db"
 
-        with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
-             patch("zeiterfassung.cli.app.load_settings") as mock_settings:
+        with (
+            patch("zeiterfassung.cli.app.get_db_path", return_value=db_path),
+            patch("zeiterfassung.cli.app.load_settings") as mock_settings,
+        ):
             from zeiterfassung.config import Settings
+
             mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
             result = runner.invoke(app, ["balance"])
 
@@ -74,9 +85,12 @@ class TestAddCommand:
         """
         db_path = tmp_path / "test.db"
 
-        with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
-             patch("zeiterfassung.cli.app.load_settings") as mock_settings:
+        with (
+            patch("zeiterfassung.cli.app.get_db_path", return_value=db_path),
+            patch("zeiterfassung.cli.app.load_settings") as mock_settings,
+        ):
             from zeiterfassung.config import Settings
+
             mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
             result = runner.invoke(app, ["add", "2026-04-14", "sick"])
 
@@ -85,9 +99,12 @@ class TestAddCommand:
     def test_add_invalid_date_exits_nonzero(self, tmp_path):
         """zeit add with invalid date format exits non-zero."""
         db_path = tmp_path / "test.db"
-        with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
-             patch("zeiterfassung.cli.app.load_settings") as mock_settings:
+        with (
+            patch("zeiterfassung.cli.app.get_db_path", return_value=db_path),
+            patch("zeiterfassung.cli.app.load_settings") as mock_settings,
+        ):
             from zeiterfassung.config import Settings
+
             mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
             result = runner.invoke(app, ["add", "not-a-date", "sick"])
         assert result.exit_code != 0
@@ -102,9 +119,12 @@ class TestShowCommand:
         """
         db_path = tmp_path / "test.db"
 
-        with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
-             patch("zeiterfassung.cli.app.load_settings") as mock_settings:
+        with (
+            patch("zeiterfassung.cli.app.get_db_path", return_value=db_path),
+            patch("zeiterfassung.cli.app.load_settings") as mock_settings,
+        ):
             from zeiterfassung.config import Settings
+
             mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
             result = runner.invoke(app, ["show"])
 

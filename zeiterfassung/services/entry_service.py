@@ -71,7 +71,9 @@ class EntryService:
             DuplicateEntryError: If an entry already exists for this date.
         """
         start_time, end_time = self._parse_times(time_range_raw)
-        pause_minutes = decimal_hours_to_minutes(pause_decimal) if pause_decimal is not None else 0
+        pause_minutes = (
+            decimal_hours_to_minutes(pause_decimal) if pause_decimal is not None else 0
+        )
         now = datetime.datetime.now()
         entry = TimeEntry(
             date=date,
@@ -112,7 +114,9 @@ class EntryService:
         """
         existing = self._repo.get_by_date(date)
         start_time, end_time = self._parse_times(time_range_raw)
-        pause_minutes = decimal_hours_to_minutes(pause_decimal) if pause_decimal is not None else 0
+        pause_minutes = (
+            decimal_hours_to_minutes(pause_decimal) if pause_decimal is not None else 0
+        )
         now = datetime.datetime.now()
         # Preserve the original created_at timestamp if the entry already exists
         created_at = existing.created_at if existing is not None else now
@@ -216,14 +220,20 @@ class EntryService:
             if current in entry_map:
                 entry = entry_map[current]
                 delta = calculate_delta(entry)
-                results.append(DayResult(date=current, entry=entry, delta_minutes=delta, is_missing=False))
+                results.append(
+                    DayResult(
+                        date=current, entry=entry, delta_minutes=delta, is_missing=False
+                    )
+                )
             elif (
                 is_workday(current, self._settings.state, self._settings.weekend_work)
                 and min_date is not None
                 and min_date <= current <= today
             ):
                 results.append(
-                    DayResult(date=current, entry=None, delta_minutes=-target, is_missing=True)
+                    DayResult(
+                        date=current, entry=None, delta_minutes=-target, is_missing=True
+                    )
                 )
             current += datetime.timedelta(days=1)
 

@@ -63,7 +63,9 @@ class TestCalculateDelta:
 
     def test_work_with_pause(self):
         """Work with 30-minute pause: (540 - 30) - 480 = 30 min overtime."""
-        entry = _make_entry(EntryType.work, start="09:00", end="18:00", pause_minutes=30)
+        entry = _make_entry(
+            EntryType.work, start="09:00", end="18:00", pause_minutes=30
+        )
         assert calculate_delta(entry) == 30
 
     def test_work_undertime(self):
@@ -100,7 +102,9 @@ class TestCalculateDelta:
     def test_work_negative_effective_time_raises(self):
         """Pause longer than work duration must raise ValueError (EC-2)."""
         # 09:00 to 10:00 = 60 min, pause = 90 min → effective = -30
-        entry = _make_entry(EntryType.work, start="09:00", end="10:00", pause_minutes=90)
+        entry = _make_entry(
+            EntryType.work, start="09:00", end="10:00", pause_minutes=90
+        )
         with pytest.raises(ValueError, match="negative"):
             calculate_delta(entry)
 

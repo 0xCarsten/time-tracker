@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import datetime
 
-import pytest
 
 from zeiterfassung.config import Settings
 from zeiterfassung.domain.models import EntryType, TimeEntry
@@ -25,42 +24,50 @@ def _settings(weekly_hours: float = 40.0, state: str = "BY") -> Settings:
     return Settings(weekly_hours=weekly_hours, state=state)
 
 
-def _insert_work(repo: EntryRepository, date: datetime.date, start: str, end: str, pause: int = 0) -> None:
+def _insert_work(
+    repo: EntryRepository, date: datetime.date, start: str, end: str, pause: int = 0
+) -> None:
     """Insert a work entry into the repo."""
-    repo.insert(TimeEntry(
-        date=date,
-        entry_type=EntryType.work,
-        start_time=datetime.time.fromisoformat(start),
-        end_time=datetime.time.fromisoformat(end),
-        pause_minutes=pause,
-        daily_target_minutes=_TARGET,
-        created_at=_NOW,
-        updated_at=_NOW,
-    ))
+    repo.insert(
+        TimeEntry(
+            date=date,
+            entry_type=EntryType.work,
+            start_time=datetime.time.fromisoformat(start),
+            end_time=datetime.time.fromisoformat(end),
+            pause_minutes=pause,
+            daily_target_minutes=_TARGET,
+            created_at=_NOW,
+            updated_at=_NOW,
+        )
+    )
 
 
 def _insert_sick(repo: EntryRepository, date: datetime.date) -> None:
     """Insert a sick entry into the repo."""
-    repo.insert(TimeEntry(
-        date=date,
-        entry_type=EntryType.sick,
-        pause_minutes=0,
-        daily_target_minutes=_TARGET,
-        created_at=_NOW,
-        updated_at=_NOW,
-    ))
+    repo.insert(
+        TimeEntry(
+            date=date,
+            entry_type=EntryType.sick,
+            pause_minutes=0,
+            daily_target_minutes=_TARGET,
+            created_at=_NOW,
+            updated_at=_NOW,
+        )
+    )
 
 
 def _insert_absent(repo: EntryRepository, date: datetime.date) -> None:
     """Insert an absent entry into the repo."""
-    repo.insert(TimeEntry(
-        date=date,
-        entry_type=EntryType.absent,
-        pause_minutes=0,
-        daily_target_minutes=_TARGET,
-        created_at=_NOW,
-        updated_at=_NOW,
-    ))
+    repo.insert(
+        TimeEntry(
+            date=date,
+            entry_type=EntryType.absent,
+            pause_minutes=0,
+            daily_target_minutes=_TARGET,
+            created_at=_NOW,
+            updated_at=_NOW,
+        )
+    )
 
 
 class TestSaldoServiceEmpty:
@@ -115,8 +122,8 @@ class TestSaldoServiceWithEntries:
         repo = EntryRepository(db_conn)
         # Wed Apr 8: work +60, Thu Apr 9: sick 0, Fri Apr 10: absent -480
         _insert_work(repo, datetime.date(2026, 4, 8), "09:00", "18:00")  # +60
-        _insert_sick(repo, datetime.date(2026, 4, 9))                     # 0
-        _insert_absent(repo, datetime.date(2026, 4, 10))                  # -480
+        _insert_sick(repo, datetime.date(2026, 4, 9))  # 0
+        _insert_absent(repo, datetime.date(2026, 4, 10))  # -480
         service = BalanceService(repo, _settings())
         balance = service.compute(
             from_date=datetime.date(2026, 4, 8),

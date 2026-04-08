@@ -88,7 +88,12 @@ class TestDayResult:
             created_at=_NOW,
             updated_at=_NOW,
         )
-        result = DayResult(date=datetime.date(2026, 4, 7), entry=entry, delta_minutes=0, is_missing=False)
+        result = DayResult(
+            date=datetime.date(2026, 4, 7),
+            entry=entry,
+            delta_minutes=0,
+            is_missing=False,
+        )
         assert result.is_missing is False
         assert result.entry is entry
 
