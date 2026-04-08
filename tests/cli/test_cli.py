@@ -109,6 +109,28 @@ class TestAddCommand:
             result = runner.invoke(app, ["add", "not-a-date", "sick"])
         assert result.exit_code != 0
 
+    def test_add_today_uses_current_date(self, tmp_path):
+        """zeit add today sick resolves 'today' to datetime.date.today()."""
+        import datetime
+
+        db_path = tmp_path / "test.db"
+        fixed_today = datetime.date(2026, 4, 8)
+
+        with (
+            patch("zeiterfassung.cli.app.get_db_path", return_value=db_path),
+            patch("zeiterfassung.cli.app.load_settings") as mock_settings,
+            patch("zeiterfassung.cli.app.datetime") as mock_dt,
+        ):
+            mock_dt.date.today.return_value = fixed_today
+            mock_dt.date.fromisoformat = datetime.date.fromisoformat
+            from zeiterfassung.config import Settings
+
+            mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
+            result = runner.invoke(app, ["add", "today", "sick"])
+
+        assert result.exit_code == 0
+        assert "2026-04-08" in result.output or "Added" in result.output
+
 
 class TestShowCommand:
     """Tests for the show command."""

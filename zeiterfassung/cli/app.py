@@ -83,15 +83,19 @@ def _get_services():
 
 def _parse_date(date_str: str) -> datetime.date:
     """
-    Parse a date string in YYYY-MM-DD format only (ALT-006).
+    Parse a date string in YYYY-MM-DD format, or the special value 'today'.
 
     Raises:
         typer.BadParameter: If format is invalid.
     """
+    if date_str.lower() == "today":
+        return datetime.date.today()
     try:
         return datetime.date.fromisoformat(date_str)
     except ValueError:
-        raise typer.BadParameter(f"Date must be YYYY-MM-DD, got '{date_str}'")
+        raise typer.BadParameter(
+            f"Date must be YYYY-MM-DD or 'today', got '{date_str}'"
+        )
 
 
 def _parse_optional_date(date_str: Optional[str]) -> Optional[datetime.date]:
@@ -147,7 +151,7 @@ def config(
 
 @app.command()
 def add(
-    date_str: str = typer.Argument(help="Date as YYYY-MM-DD"),
+    date_str: str = typer.Argument(help="Date as YYYY-MM-DD, or 'today'"),
     entry_type: EntryType = typer.Argument(
         help="Entry type: work|sick|vacation|holiday|absent"
     ),
