@@ -25,7 +25,7 @@ _TARGET = 480
 
 def _setup_services(db_conn) -> tuple[EntryService, ExportService]:
     """Create EntryService and ExportService backed by an in-memory DB."""
-    settings = Settings(weekly_hours=40.0, bundesland="BY")
+    settings = Settings(weekly_hours=40.0, state="BY")
     repo = EntryRepository(db_conn)
     entry_service = EntryService(repo, settings)
     export_service = ExportService(entry_service)
@@ -39,14 +39,14 @@ class TestExportExcel:
         """
         Export creates a file with correct headers in row 1 (TEST-019).
 
-        Headers: Date, Type, Start, End, Pause (h), Delta (h), Running Saldo (h)
+        Headers: Date, Type, Start, End, Pause (h), Delta (h), Running Balance (h)
         """
         entry_service, export_service = _setup_services(db_conn)
 
         # Insert one entry
         entry_service.add_entry(
             date=datetime.date(2026, 4, 14),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
         )
 
         out = tmp_path / "test_export.xlsx"
@@ -60,7 +60,7 @@ class TestExportExcel:
         ws = wb.active
         headers = [cell.value for cell in ws[1]]
         assert headers == [
-            "Date", "Type", "Start", "End", "Pause (h)", "Delta (h)", "Running Saldo (h)"
+            "Date", "Type", "Start", "End", "Pause (h)", "Delta (h)", "Running Balance (h)"
         ]
 
     def test_empty_range_produces_only_header_and_summary(self, db_conn, tmp_path):
@@ -104,7 +104,7 @@ class TestExportExcel:
 
         entry_service.add_entry(
             date=datetime.date(2026, 4, 14),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
         )
 
         out = tmp_path / "data_test.xlsx"
@@ -118,4 +118,4 @@ class TestExportExcel:
         ws = wb.active
         # Row 1 = headers, Row 2 = data, Row 3 = TOTAL
         assert ws.cell(row=2, column=1).value == "2026-04-14"
-        assert ws.cell(row=2, column=2).value == "krank"
+        assert ws.cell(row=2, column=2).value == "sick"

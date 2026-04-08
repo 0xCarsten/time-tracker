@@ -29,9 +29,9 @@ class TestGetHolidays:
         holidays = get_holidays(2026, "BY")
         assert datetime.date(2026, 1, 1) in holidays
 
-    def test_invalid_bundesland_raises(self):
+    def test_invalid_state_raises(self):
         """get_holidays with an invalid state code raises ValueError (CRIT-001)."""
-        with pytest.raises(ValueError, match="Invalid bundesland"):
+        with pytest.raises(ValueError, match="Invalid state"):
             get_holidays(2026, "XX")
 
     def test_returns_set(self):
@@ -56,9 +56,9 @@ class TestIsPublicHoliday:
         result = is_public_holiday(datetime.date(2026, 4, 8), "BY")
         assert result is None
 
-    def test_invalid_bundesland_raises(self):
+    def test_invalid_state_raises(self):
         """Invalid state code raises ValueError — not a print (CRIT-001 / GUD-001)."""
-        with pytest.raises(ValueError, match="Invalid bundesland 'ZZ'"):
+        with pytest.raises(ValueError, match="Invalid state code 'ZZ'"):
             is_public_holiday(datetime.date(2026, 4, 8), "ZZ")
 
     def test_holiday_on_saturday_not_workday(self):
@@ -73,10 +73,10 @@ class TestIsPublicHoliday:
         result = is_public_holiday(datetime.date(2026, 4, 6), "BY")
         assert result is not None
 
-    def test_same_day_different_bundesland(self):
-        """Fronleichnam is valid in BY but not in all states (e.g. not in HB)."""
-        # Fronleichnam 2026 is June 4
+    def test_same_day_different_state(self):
+        """Corpus Christi is valid in BY but not in all states (e.g. not in HB)."""
+        # Corpus Christi 2026 is June 4
         by_result = is_public_holiday(datetime.date(2026, 6, 4), "BY")
         hb_result = is_public_holiday(datetime.date(2026, 6, 4), "HB")
-        assert by_result is not None  # Bayern has Fronleichnam
+        assert by_result is not None  # Bavaria has Corpus Christi
         assert hb_result is None  # Bremen does not

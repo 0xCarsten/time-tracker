@@ -49,10 +49,10 @@ def format_date(d: datetime.date) -> str:
 
 def make_day_table(results: list[DayResult]) -> Table:
     """
-    Build a Rich Table showing daily time entries with running saldo.
+    Build a Rich Table showing daily time entries with running balance.
 
     Missing workdays are styled bold red.
-    Columns: Date, Type, Start, End, Pause, Delta, Running Saldo.
+    Columns: Date, Type, Start, End, Pause, Delta, Running Balance.
 
     Parameters:
         results: List of DayResult objects from EntryService.build_day_results.
@@ -60,14 +60,14 @@ def make_day_table(results: list[DayResult]) -> Table:
     Returns:
         A Rich Table ready to print.
     """
-    table = Table(title="Zeiterfassung", show_header=True, header_style="bold blue")
+    table = Table(title="Time Tracking", show_header=True, header_style="bold blue")
     table.add_column("Date", style="cyan", width=12)
     table.add_column("Type", width=10)
     table.add_column("Start", width=6)
     table.add_column("End", width=6)
     table.add_column("Pause", width=6)
     table.add_column("Delta", width=8)
-    table.add_column("Running Saldo", width=14)
+    table.add_column("Running Balance", width=14)
 
     running = 0
     for result in results:
@@ -100,20 +100,20 @@ def make_day_table(results: list[DayResult]) -> Table:
     return table
 
 
-def make_saldo_panel(minutes: int) -> Panel:
+def make_balance_panel(minutes: int) -> Panel:
     """
     Build a Rich Panel showing the cumulative overtime balance.
 
     Parameters:
-        minutes: Signed integer minutes of total saldo.
+        minutes: Signed integer minutes of total balance.
 
     Returns:
-        A Rich Panel with the saldo formatted as HH:MM.
+        A Rich Panel with the balance formatted as HH:MM.
     """
     formatted = format_minutes_as_hhmm(minutes)
     color = "green" if minutes >= 0 else "red"
     return Panel(
         f"[{color}]{formatted}[/{color}]",
-        title="Saldo (Overtime Balance)",
+        title="Overtime Balance",
         expand=False,
     )

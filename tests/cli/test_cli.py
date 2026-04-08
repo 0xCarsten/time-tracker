@@ -31,7 +31,7 @@ class TestHelpCommands:
         """zeit --help output contains all expected subcommands (TASK-036)."""
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        for cmd in ["add", "edit", "delete", "bulk", "saldo", "show", "list", "fill-missing", "export", "config"]:
+        for cmd in ["add", "edit", "delete", "bulk", "balance", "show", "list", "fill-missing", "export", "config"]:
             assert cmd in result.output, f"Command '{cmd}' missing from --help output"
 
     def test_add_help_exits_zero(self):
@@ -45,12 +45,12 @@ class TestHelpCommands:
         assert result.exit_code == 0
 
 
-class TestSaldoCommand:
-    """Tests for the saldo command."""
+class TestBalanceCommand:
+    """Tests for the balance command."""
 
-    def test_saldo_empty_db_exits_zero(self, tmp_path):
+    def test_balance_empty_db_exits_zero(self, tmp_path):
         """
-        zeit saldo with empty DB exits 0 and output contains '0:00' (TASK-035).
+        zeit balance with empty DB exits 0 and output contains '0:00' (TASK-035).
         Uses a temporary DB file path via mock.
         """
         db_path = tmp_path / "test.db"
@@ -58,8 +58,8 @@ class TestSaldoCommand:
         with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
              patch("zeiterfassung.cli.app.load_settings") as mock_settings:
             from zeiterfassung.config import Settings
-            mock_settings.return_value = Settings(weekly_hours=40.0, bundesland="BY")
-            result = runner.invoke(app, ["saldo"])
+            mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
+            result = runner.invoke(app, ["balance"])
 
         assert result.exit_code == 0
         assert "0:00" in result.output
@@ -68,17 +68,17 @@ class TestSaldoCommand:
 class TestAddCommand:
     """Tests for the add command."""
 
-    def test_add_krank_exits_zero(self, tmp_path):
+    def test_add_sick_exits_zero(self, tmp_path):
         """
-        zeit add 2026-04-14 krank exits 0 with pre-seeded config (TASK-035).
+        zeit add 2026-04-14 sick exits 0 with pre-seeded config (TASK-035).
         """
         db_path = tmp_path / "test.db"
 
         with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
              patch("zeiterfassung.cli.app.load_settings") as mock_settings:
             from zeiterfassung.config import Settings
-            mock_settings.return_value = Settings(weekly_hours=40.0, bundesland="BY")
-            result = runner.invoke(app, ["add", "2026-04-14", "krank"])
+            mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
+            result = runner.invoke(app, ["add", "2026-04-14", "sick"])
 
         assert result.exit_code == 0
 
@@ -88,8 +88,8 @@ class TestAddCommand:
         with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
              patch("zeiterfassung.cli.app.load_settings") as mock_settings:
             from zeiterfassung.config import Settings
-            mock_settings.return_value = Settings(weekly_hours=40.0, bundesland="BY")
-            result = runner.invoke(app, ["add", "not-a-date", "krank"])
+            mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
+            result = runner.invoke(app, ["add", "not-a-date", "sick"])
         assert result.exit_code != 0
 
 
@@ -105,7 +105,7 @@ class TestShowCommand:
         with patch("zeiterfassung.cli.app.get_db_path", return_value=db_path), \
              patch("zeiterfassung.cli.app.load_settings") as mock_settings:
             from zeiterfassung.config import Settings
-            mock_settings.return_value = Settings(weekly_hours=40.0, bundesland="BY")
+            mock_settings.return_value = Settings(weekly_hours=40.0, state="BY")
             result = runner.invoke(app, ["show"])
 
         assert result.exit_code == 0
@@ -116,24 +116,24 @@ class TestShowCommand:
 class TestConfigCommand:
     """Tests for the config command."""
 
-    def test_config_valid_bundesland_exits_zero(self, tmp_path):
-        """zeit config with valid bundesland exits 0."""
+    def test_config_valid_state_exits_zero(self, tmp_path):
+        """zeit config with valid state exits 0."""
         with patch("zeiterfassung.config.save_settings"):
             result = runner.invoke(
-                app, ["config", "--weekly-hours", "40.0", "--bundesland", "BY"]
+                app, ["config", "--weekly-hours", "40.0", "--state", "BY"]
             )
         assert result.exit_code == 0
 
-    def test_config_invalid_bundesland_exits_one(self):
-        """zeit config with invalid bundesland exits 1 with error message."""
+    def test_config_invalid_state_exits_one(self):
+        """zeit config with invalid state exits 1 with error message."""
         result = runner.invoke(
-            app, ["config", "--weekly-hours", "40.0", "--bundesland", "INVALID"]
+            app, ["config", "--weekly-hours", "40.0", "--state", "INVALID"]
         )
         assert result.exit_code == 1
 
     def test_config_negative_hours_exits_one(self):
         """zeit config with negative hours exits 1."""
         result = runner.invoke(
-            app, ["config", "--weekly-hours", "-1.0", "--bundesland", "BY"]
+            app, ["config", "--weekly-hours", "-1.0", "--state", "BY"]
         )
         assert result.exit_code == 1

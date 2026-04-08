@@ -5,7 +5,7 @@ All commands are defined here. Service layer is wired via _get_services().
 The CLI is the only layer permitted to perform I/O (print, input, Rich console).
 Domain ValueError exceptions are caught here and displayed as Rich error messages.
 
-Commands: config, add, edit, delete, bulk, saldo, show, list, fill-missing, export.
+Commands: config, add, edit, delete, bulk, balance, show, list, fill-missing, export.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from zeiterfassung.cli.formatters import (
     format_date,
     format_minutes_as_hhmm,
     make_day_table,
-    make_saldo_panel,
+    make_balance_panel,
 )
 from zeiterfassung.config import load_settings, save_settings, Settings
 from zeiterfassung.domain.holidays import is_public_holiday
@@ -32,7 +32,7 @@ from zeiterfassung.repository.db import get_connection, get_db_path
 from zeiterfassung.repository.entry_repo import EntryRepository
 from zeiterfassung.services.entry_service import EntryService
 from zeiterfassung.services.export_service import ExportService
-from zeiterfassung.services.saldo_service import SaldoService
+from zeiterfassung.services.saldo_service import BalanceService
 
 app = typer.Typer(name="zeit", add_completion=True, help="zeiterfassung — time tracking CLI")
 console = Console()
@@ -47,7 +47,7 @@ def _main(
     db: Optional[Path] = typer.Option(
         None,
         "--db",
-        help="Override DB file path (also: ZEIT_DB env var or db_path in config.toml).",
+        help="Override DB file path (also: TIMETRACK_DB env var or db_path in config.toml).",
         show_default=False,
     ),
 ) -> None:
@@ -72,9 +72,9 @@ def _get_services():
     try:
         repo = EntryRepository(conn)
         entry_service = EntryService(repo, settings)
-        saldo_service = SaldoService(repo, settings)
+        balance_service = BalanceService(repo, settings)
         export_service = ExportService(entry_service)
-        yield entry_service, saldo_service, export_service
+        yield entry_service, balance_service, export_service
     finally:
         conn.close()
 
@@ -107,7 +107,7 @@ def _parse_optional_date(date_str: Optional[str]) -> Optional[datetime.date]:
 @app.command()
 def config(
     weekly_hours: float = typer.Option(..., help="Weekly contracted hours (e.g. 40.0)"),
-    bundesland: str = typer.Option(..., help="German state code (e.g. BY, BE, NW)"),
+    state: str = typer.Option(..., help="German state code (e.g. BY, BE, NW)"),
     db_path: Optional[str] = typer.Option(
         None,
         "--db-path",
@@ -120,9 +120,9 @@ def config(
         help="Count Saturdays and Sundays as potential workdays (default: off).",
     ),
 ) -> None:
-    """Configure weekly hours, Bundesland, and optional custom DB path."""
+    """Configure weekly hours, state, and optional custom DB path."""
     try:
-        is_public_holiday(datetime.date.today(), bundesland)
+        is_public_holiday(datetime.date.today(), state)
     except ValueError as exc:
         err_console.print(f"[bold red]Error:[/bold red] {exc}")
         raise typer.Exit(code=1)
@@ -131,11 +131,11 @@ def config(
         err_console.print("[bold red]Error:[/bold red] weekly_hours must be positive.")
         raise typer.Exit(code=1)
 
-    s = Settings(weekly_hours=weekly_hours, bundesland=bundesland, db_path=db_path or None, weekend_work=weekend_work)
+    s = Settings(weekly_hours=weekly_hours, state=state, db_path=db_path or None, weekend_work=weekend_work)
     save_settings(s)
     db_info = f"\nDB path:      {db_path}" if db_path else ""
     console.print(
-        f"[green]Config saved:[/green] weekly_hours={weekly_hours}, bundesland={bundesland}, weekend_work={weekend_work}{db_info}\n"
+        f"[green]Config saved:[/green] weekly_hours={weekly_hours}, state={state}, weekend_work={weekend_work}{db_info}\n"
         f"Daily target: {format_minutes_as_hhmm(s.daily_target_minutes, signed=False)}"
     )
 
@@ -143,7 +143,7 @@ def config(
 @app.command()
 def add(
     date_str: str = typer.Argument(help="Date as YYYY-MM-DD"),
-    entry_type: EntryType = typer.Argument(help="Entry type: work|krank|urlaub|feiertag|abwesend"),
+    entry_type: EntryType = typer.Argument(help="Entry type: work|sick|vacation|holiday|absent"),
     time_range: Optional[str] = typer.Argument(
         default=None, help="Time range as HH:MM-HH:MM (required for work)"
     ),
@@ -154,10 +154,10 @@ def add(
     date = _parse_date(date_str)
 
     with _get_services() as (entry_service, _, __):
-        # Auto-detect feiertag: if date is a holiday and type is not work,
-        # override to feiertag and set note (REQ-008).
+        # Auto-detect holiday: if date is a holiday and type is not work,
+        # override to holiday and set note (REQ-008).
         try:
-            holiday_name = is_public_holiday(date, entry_service._settings.bundesland)
+            holiday_name = is_public_holiday(date, entry_service._settings.state)
         except ValueError as exc:
             err_console.print(f"[bold red]Error:[/bold red] {exc}")
             raise typer.Exit(code=1)
@@ -165,9 +165,9 @@ def add(
         if holiday_name and entry_type != EntryType.work:
             console.print(
                 f"[yellow]Auto-detected public holiday:[/yellow] {holiday_name}. "
-                f"Setting type to feiertag."
+                f"Setting type to holiday."
             )
-            entry_type = EntryType.feiertag
+            entry_type = EntryType.holiday
             note = note or holiday_name
 
         try:
@@ -277,7 +277,7 @@ def bulk() -> None:
     """Interactive bulk entry mode. Enter one entry per line; empty line or 'done' to exit."""
     console.print(
         "[bold]Bulk entry mode[/bold] — format: YYYY-MM-DD HH:MM-HH:MM [pDECIMAL] "
-        "or YYYY-MM-DD krank|urlaub|abwesend|feiertag [NOTE]\n"
+        "or YYYY-MM-DD sick|vacation|absent|holiday [NOTE]\n"
         "Empty line or 'done' to exit."
     )
 
@@ -303,7 +303,7 @@ def _process_bulk_line(line: str, entry_service: EntryService) -> None:
 
     Formats:
         YYYY-MM-DD HH:MM-HH:MM [pDECIMAL]
-        YYYY-MM-DD krank|urlaub|abwesend|feiertag [NOTE...]
+        YYYY-MM-DD sick|vacation|absent|holiday [NOTE...]
     """
     parts = line.split()
     if len(parts) < 2:
@@ -336,18 +336,18 @@ def _process_bulk_line(line: str, entry_service: EntryService) -> None:
 
 
 @app.command()
-def saldo(
+def balance(
     from_date: Optional[str] = typer.Option(None, "--from", help="Start date YYYY-MM-DD"),
     to_date: Optional[str] = typer.Option(None, "--to", help="End date YYYY-MM-DD"),
 ) -> None:
-    """Show cumulative overtime balance (Saldo)."""
+    """Show cumulative overtime balance."""
     from_d = _parse_optional_date(from_date)
     to_d = _parse_optional_date(to_date)
 
-    with _get_services() as (_, saldo_service, __):
-        total = saldo_service.compute(from_date=from_d, to_date=to_d)
+    with _get_services() as (_, balance_service, __):
+        total = balance_service.compute(from_date=from_d, to_date=to_d)
 
-    console.print(make_saldo_panel(total))
+    console.print(make_balance_panel(total))
 
 
 @app.command()
@@ -425,7 +425,7 @@ def fill_missing(
         for date in missing:
             console.print(f"\n[cyan]{format_date(date)}[/cyan]")
             type_str = Prompt.ask(
-                "  Entry type (work/krank/urlaub/abwesend/feiertag) or Enter to skip",
+                "  Entry type (work/sick/vacation/absent/holiday) or Enter to skip",
                 default="",
             )
             if not type_str:

@@ -29,7 +29,7 @@ class TestTimeEntry:
         """TimeEntry.note defaults to None without error (MIN-002)."""
         entry = TimeEntry(
             date=datetime.date(2026, 4, 7),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
             pause_minutes=0,
             daily_target_minutes=480,
             created_at=_NOW,
@@ -41,7 +41,7 @@ class TestTimeEntry:
         """TimeEntry.note accepts a non-None string."""
         entry = TimeEntry(
             date=datetime.date(2026, 4, 7),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
             pause_minutes=0,
             daily_target_minutes=480,
             created_at=_NOW,
@@ -112,23 +112,23 @@ class TestSettings:
 
     def test_daily_target_40h(self):
         """40h / 5 days * 60 min = 480 minutes per day."""
-        s = Settings(weekly_hours=40.0, bundesland="BY")
+        s = Settings(weekly_hours=40.0, state="BY")
         assert s.daily_target_minutes == 480
 
     def test_daily_target_35h(self):
         """35h weekly hours → 420 minutes per day."""
-        s = Settings(weekly_hours=35.0, bundesland="BY")
+        s = Settings(weekly_hours=35.0, state="BY")
         assert s.daily_target_minutes == 420
 
     def test_weekly_hours_zero_raises(self):
         """weekly_hours=0 raises ValueError (EC-3)."""
-        s = Settings(weekly_hours=0.0, bundesland="BY")
+        s = Settings(weekly_hours=0.0, state="BY")
         with pytest.raises(ValueError, match="positive"):
             _ = s.daily_target_minutes
 
     def test_weekly_hours_negative_raises(self):
         """Negative weekly_hours raises ValueError."""
-        s = Settings(weekly_hours=-8.0, bundesland="BY")
+        s = Settings(weekly_hours=-8.0, state="BY")
         with pytest.raises(ValueError, match="positive"):
             _ = s.daily_target_minutes
 

@@ -1,5 +1,5 @@
 """
-Saldo (overtime balance) computation service.
+Balance (overtime balance) computation service.
 
 Computes cumulative signed delta across all entries and missing workdays.
 NEW-MIN-002: calls is_workday() from domain/rules.py directly for missing-workday
@@ -16,9 +16,9 @@ from zeiterfassung.domain.rules import calculate_delta, is_workday
 from zeiterfassung.repository.entry_repo import EntryRepository
 
 
-class SaldoService:
+class BalanceService:
     """
-    Computes the cumulative overtime balance (Saldo) over a date range.
+    Computes the cumulative overtime balance over a date range.
 
     Missing workdays subtract settings.daily_target_minutes (documented assumption:
     uses current settings value, not historical snapshot for missing days).
@@ -30,7 +30,7 @@ class SaldoService:
 
         Parameters:
             repo: Entry repository for reading persisted entries.
-            settings: User settings for daily target and bundesland.
+            settings: User settings for daily target and state.
         """
         self._repo = repo
         self._settings = settings
@@ -41,7 +41,7 @@ class SaldoService:
         to_date: Optional[datetime.date] = None,
     ) -> int:
         """
-        Compute cumulative saldo in minutes.
+        Compute cumulative balance in minutes.
 
         For entries in range: sum calculate_delta(entry).
         For missing workdays: subtract settings.daily_target_minutes.
@@ -74,7 +74,7 @@ class SaldoService:
         # call is_workday() from domain/rules.py directly, no EntryService dep).
         current = effective_from
         while current <= effective_to:
-            if is_workday(current, self._settings.bundesland, self._settings.weekend_work) and current not in entry_dates:
+            if is_workday(current, self._settings.state, self._settings.weekend_work) and current not in entry_dates:
                 total -= self._settings.daily_target_minutes
             current += datetime.timedelta(days=1)
 

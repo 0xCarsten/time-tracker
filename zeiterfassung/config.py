@@ -19,7 +19,7 @@ _CONFIG_PATH = Path("~/.config/zeiterfassung/config.toml")
 
 _DEFAULTS: dict = {
     "weekly_hours": 40.0,
-    "bundesland": "BY",
+    "state": "BY",
     "weekend_work": False,
 }
 
@@ -27,15 +27,15 @@ _DEFAULTS: dict = {
 @dataclass
 class Settings:
     """
-    User configuration for weekly working hours and Bundesland.
+    User configuration for weekly working hours and German state.
 
     weekly_hours: Contracted weekly hours (e.g. 40.0 for full-time).
-    bundesland: German state code for public holiday detection (e.g. 'BY').
+    state: German state code for public holiday detection (e.g. 'BY').
     weekend_work: If True, Saturday and Sunday are treated as potential workdays.
     """
 
     weekly_hours: float
-    bundesland: str
+    state: str
     db_path: Optional[str] = None
     weekend_work: bool = False
 
@@ -70,13 +70,13 @@ def load_settings() -> Settings:
     if not path.exists():
         return Settings(
             weekly_hours=_DEFAULTS["weekly_hours"],
-            bundesland=_DEFAULTS["bundesland"],
+            state=_DEFAULTS["state"],
         )
     with path.open("rb") as f:
         data = tomllib.load(f)
     return Settings(
         weekly_hours=float(data.get("weekly_hours", _DEFAULTS["weekly_hours"])),
-        bundesland=str(data.get("bundesland", _DEFAULTS["bundesland"])),
+        state=str(data.get("state", _DEFAULTS["state"])),
         db_path=data.get("db_path") or None,
         weekend_work=bool(data.get("weekend_work", _DEFAULTS["weekend_work"])),
     )
@@ -93,7 +93,7 @@ def save_settings(s: Settings) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     data: dict = {
         "weekly_hours": s.weekly_hours,
-        "bundesland": s.bundesland,
+        "state": s.state,
         "weekend_work": s.weekend_work,
     }
     if s.db_path:

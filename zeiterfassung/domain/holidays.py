@@ -13,9 +13,9 @@ from typing import Optional
 import holidays
 
 
-def _validate_bundesland(code: str) -> None:
+def _validate_state(code: str) -> None:
     """
-    Validate that `code` is a recognised German Bundesland subdivision code.
+    Validate that `code` is a recognised German state subdivision code.
 
     Raises:
         ValueError: If the code is not a valid subdivision (CRIT-001 fix).
@@ -23,42 +23,42 @@ def _validate_bundesland(code: str) -> None:
     valid = sorted(holidays.Germany.subdivisions)
     if code not in valid:
         raise ValueError(
-            f"Invalid bundesland '{code}'; must be one of {valid}"
+            f"Invalid state code '{code}'; must be one of {valid}"
         )
 
 
-def get_holidays(year: int, bundesland: str) -> set[datetime.date]:
+def get_holidays(year: int, state: str) -> set[datetime.date]:
     """
-    Return the set of public holiday dates for the given year and Bundesland.
+    Return the set of public holiday dates for the given year and state.
 
     Parameters:
         year: The calendar year.
-        bundesland: German state code (e.g. 'BY', 'BE').
+        state: German state code (e.g. 'BY', 'BE').
 
     Returns:
         Set of public holiday dates.
 
     Raises:
-        ValueError: If bundesland code is not valid.
+        ValueError: If state code is not valid.
     """
-    _validate_bundesland(bundesland)
-    return set(holidays.Germany(state=bundesland, years=year).keys())
+    _validate_state(state)
+    return set(holidays.Germany(state=state, years=year).keys())
 
 
-def is_public_holiday(date: datetime.date, bundesland: str) -> Optional[str]:
+def is_public_holiday(date: datetime.date, state: str) -> Optional[str]:
     """
-    Check if `date` is a public holiday in the given Bundesland.
+    Check if `date` is a public holiday in the given state.
 
     Parameters:
         date: The date to test.
-        bundesland: German state code.
+        state: German state code.
 
     Returns:
         The holiday name string if `date` is a public holiday, else None.
 
     Raises:
-        ValueError: If bundesland code is not valid (GUD-001).
+        ValueError: If state code is not valid (GUD-001).
     """
-    _validate_bundesland(bundesland)
-    de_holidays = holidays.Germany(state=bundesland, years=date.year)
+    _validate_state(state)
+    de_holidays = holidays.Germany(state=state, years=date.year)
     return de_holidays.get(date)

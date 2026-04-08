@@ -21,8 +21,8 @@ _TARGET = 480  # 8 hours = 480 minutes
 
 
 def _settings() -> Settings:
-    """Create a test Settings instance with 40h/week in Bayern."""
-    return Settings(weekly_hours=40.0, bundesland="BY")
+    """Create a test Settings instance with 40h/week in Bavaria."""
+    return Settings(weekly_hours=40.0, state="BY")
 
 
 def _make_service(db_conn) -> EntryService:
@@ -57,7 +57,7 @@ class TestGetMissingWorkdays:
         # April 8 is a workday; add an entry for it
         service.add_entry(
             date=datetime.date(2026, 4, 8),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
         )
         missing = service.get_missing_workdays(
             datetime.date(2026, 4, 8), datetime.date(2026, 4, 8)
@@ -89,7 +89,7 @@ class TestBuildDayResults:
         # Seed one entry so the tracking window is open
         service.add_entry(
             date=datetime.date(2026, 3, 31),  # Tuesday, past
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
         )
         results = service.build_day_results(
             datetime.date(2026, 4, 1), datetime.date(2026, 4, 1)
@@ -104,7 +104,7 @@ class TestBuildDayResults:
         service = _make_service(db_conn)
         service.add_entry(
             date=datetime.date(2026, 4, 8),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
         )
         results = service.build_day_results(
             datetime.date(2026, 4, 8), datetime.date(2026, 4, 8)
@@ -142,19 +142,19 @@ class TestBuildDayResults:
             daily_target_minutes=_TARGET,
             created_at=_NOW, updated_at=_NOW,
         ))
-        # Day 2: krank 0
+        # Day 2: sick 0
         repo.insert(TimeEntry(
             date=datetime.date(2026, 3, 17),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
             pause_minutes=0,
             daily_target_minutes=_TARGET,
             created_at=_NOW, updated_at=_NOW,
         ))
         # Day 3: Mar 18 — no entry (missing workday), delta = -480
-        # Day 4: urlaub 0
+        # Day 4: vacation 0
         repo.insert(TimeEntry(
             date=datetime.date(2026, 3, 19),
-            entry_type=EntryType.urlaub,
+            entry_type=EntryType.vacation,
             pause_minutes=0,
             daily_target_minutes=_TARGET,
             created_at=_NOW, updated_at=_NOW,
@@ -196,32 +196,32 @@ class TestBuildDayResults:
 class TestAddAndOverwriteEntry:
     """Tests for add_entry and overwrite_entry."""
 
-    def test_add_entry_krank(self, db_conn):
-        """add_entry creates a krank entry successfully."""
+    def test_add_entry_sick(self, db_conn):
+        """add_entry creates a sick entry successfully."""
         service = _make_service(db_conn)
         entry = service.add_entry(
             date=datetime.date(2026, 4, 8),
-            entry_type=EntryType.krank,
+            entry_type=EntryType.sick,
         )
         assert entry.id is not None
-        assert entry.entry_type == EntryType.krank
+        assert entry.entry_type == EntryType.sick
 
     def test_overwrite_entry_is_sole_upsert_path(self, db_conn):
         """overwrite_entry is the only path that calls repo.upsert (CRIT-002)."""
         service = _make_service(db_conn)
-        service.add_entry(date=datetime.date(2026, 4, 8), entry_type=EntryType.krank)
+        service.add_entry(date=datetime.date(2026, 4, 8), entry_type=EntryType.sick)
         updated = service.overwrite_entry(
             date=datetime.date(2026, 4, 8),
-            entry_type=EntryType.urlaub,
+            entry_type=EntryType.vacation,
         )
-        assert updated.entry_type == EntryType.urlaub
+        assert updated.entry_type == EntryType.vacation
         fetched = service.get_entry(datetime.date(2026, 4, 8))
         assert fetched is not None
-        assert fetched.entry_type == EntryType.urlaub
+        assert fetched.entry_type == EntryType.vacation
 
     def test_delete_entry(self, db_conn):
         """delete_entry removes the entry and returns True."""
         service = _make_service(db_conn)
-        service.add_entry(date=datetime.date(2026, 4, 8), entry_type=EntryType.krank)
+        service.add_entry(date=datetime.date(2026, 4, 8), entry_type=EntryType.sick)
         assert service.delete_entry(datetime.date(2026, 4, 8)) is True
         assert service.get_entry(datetime.date(2026, 4, 8)) is None

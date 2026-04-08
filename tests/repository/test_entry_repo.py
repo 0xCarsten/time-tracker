@@ -36,11 +36,11 @@ def _make_work_entry(
     )
 
 
-def _make_krank_entry(date: datetime.date = datetime.date(2026, 4, 8)) -> TimeEntry:
-    """Build a krank TimeEntry for testing."""
+def _make_sick_entry(date: datetime.date = datetime.date(2026, 4, 8)) -> TimeEntry:
+    """Build a sick TimeEntry for testing."""
     return TimeEntry(
         date=date,
-        entry_type=EntryType.krank,
+        entry_type=EntryType.sick,
         pause_minutes=0,
         daily_target_minutes=_TARGET,
         created_at=_NOW,
@@ -150,7 +150,7 @@ class TestGetRange:
         """get_range returns entries within the date range."""
         repo = EntryRepository(db_conn)
         repo.insert(_make_work_entry(datetime.date(2026, 4, 7)))
-        repo.insert(_make_krank_entry(datetime.date(2026, 4, 8)))
+        repo.insert(_make_sick_entry(datetime.date(2026, 4, 8)))
 
         results = repo.get_range(datetime.date(2026, 4, 7), datetime.date(2026, 4, 8))
         assert len(results) == 2
@@ -159,11 +159,11 @@ class TestGetRange:
         """get_range excludes entries outside the range."""
         repo = EntryRepository(db_conn)
         repo.insert(_make_work_entry(datetime.date(2026, 4, 7)))
-        repo.insert(_make_krank_entry(datetime.date(2026, 4, 8)))
+        repo.insert(_make_sick_entry(datetime.date(2026, 4, 8)))
 
         results = repo.get_range(datetime.date(2026, 4, 8), datetime.date(2026, 4, 8))
         assert len(results) == 1
-        assert results[0].entry_type == EntryType.krank
+        assert results[0].entry_type == EntryType.sick
 
     def test_get_range_empty_returns_empty_list(self, db_conn):
         """get_range with no entries in range returns empty list."""

@@ -36,7 +36,7 @@ class EntryService:
 
         Parameters:
             repo: Persistent storage for entries.
-            settings: User configuration (weekly_hours, bundesland).
+            settings: User configuration (weekly_hours, state).
         """
         self._repo = repo
         self._settings = settings
@@ -58,7 +58,7 @@ class EntryService:
 
         Parameters:
             date: The date for this entry.
-            entry_type: Type of entry (work, krank, etc.).
+            entry_type: Type of entry (work, sick, etc.).
             time_range_raw: Optional "HH:MM-HH:MM" string (required for work).
             pause_decimal: Optional pause in decimal hours (e.g. 0.5 = 30 min).
             note: Optional note string.
@@ -177,7 +177,7 @@ class EntryService:
         missing = []
         current = from_date
         while current <= to_date:
-            if is_workday(current, self._settings.bundesland, self._settings.weekend_work) and current not in entry_dates:
+            if is_workday(current, self._settings.state) and current not in entry_dates:
                 missing.append(current)
             current += datetime.timedelta(days=1)
         return missing
@@ -190,14 +190,14 @@ class EntryService:
 
         Each workday is represented: entries get their calculated delta,
         missing workdays get is_missing=True and delta = -daily_target_minutes.
-        Running saldo accumulates across results in date order.
+        Running balance accumulates across results in date order.
 
         Parameters:
             from_date: Start of range (inclusive).
             to_date: End of range (inclusive).
 
         Returns:
-            List of DayResult sorted by date ascending with running saldo.
+            List of DayResult sorted by date ascending with running balance.
         """
         entries = self._repo.get_range(from_date, to_date)
         entry_map = {e.date: e for e in entries}
@@ -218,7 +218,7 @@ class EntryService:
                 delta = calculate_delta(entry)
                 results.append(DayResult(date=current, entry=entry, delta_minutes=delta, is_missing=False))
             elif (
-                is_workday(current, self._settings.bundesland, self._settings.weekend_work)
+                is_workday(current, self._settings.state, self._settings.weekend_work)
                 and min_date is not None
                 and min_date <= current <= today
             ):

@@ -71,24 +71,24 @@ class TestCalculateDelta:
         entry = _make_entry(EntryType.work, start="09:00", end="16:00", pause_minutes=0)
         assert calculate_delta(entry) == -60  # 420 - 480 = -60
 
-    def test_krank_zero_delta(self):
-        """krank entry always returns delta 0."""
-        entry = _make_entry(EntryType.krank)
+    def test_sick_zero_delta(self):
+        """sick entry always returns delta 0."""
+        entry = _make_entry(EntryType.sick)
         assert calculate_delta(entry) == 0
 
-    def test_urlaub_zero_delta(self):
-        """urlaub entry always returns delta 0."""
-        entry = _make_entry(EntryType.urlaub)
+    def test_vacation_zero_delta(self):
+        """vacation entry always returns delta 0."""
+        entry = _make_entry(EntryType.vacation)
         assert calculate_delta(entry) == 0
 
-    def test_feiertag_zero_delta(self):
-        """feiertag entry always returns delta 0."""
-        entry = _make_entry(EntryType.feiertag)
+    def test_holiday_zero_delta(self):
+        """holiday entry always returns delta 0."""
+        entry = _make_entry(EntryType.holiday)
         assert calculate_delta(entry) == 0
 
-    def test_abwesend_negative_target(self):
-        """abwesend entry returns -daily_target_minutes."""
-        entry = _make_entry(EntryType.abwesend)
+    def test_absent_negative_target(self):
+        """absent entry returns -daily_target_minutes."""
+        entry = _make_entry(EntryType.absent)
         assert calculate_delta(entry) == -_TARGET
 
     def test_work_overnight_shift(self):
@@ -202,8 +202,8 @@ class TestIsWorkday:
         # Good Friday 2026 is April 3
         assert is_workday(datetime.date(2026, 4, 3), "BY") is False
 
-    def test_fronleichnam_bavaria_not_workday(self):
-        """Fronleichnam 2026 (June 4) is a holiday in Bavaria."""
+    def test_corpus_christi_bavaria_not_workday(self):
+        """Corpus Christi 2026 (June 4) is a holiday in Bavaria."""
         assert is_workday(datetime.date(2026, 6, 4), "BY") is False
 
     def test_holiday_on_weekend_returns_false(self):

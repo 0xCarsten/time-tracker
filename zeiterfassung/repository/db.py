@@ -18,7 +18,7 @@ def get_db_path(override: Path | None = None) -> Path:
 
     Resolution order:
       1. ``override`` argument (CLI ``--db`` flag)
-      2. ``ZEIT_DB`` environment variable
+      2. ``TIMETRACK_DB`` environment variable
       3. Default: ``~/.zeiterfassung/zeit.db``
 
     Parameters:
@@ -31,7 +31,7 @@ def get_db_path(override: Path | None = None) -> Path:
 
     if override is not None:
         path = override.expanduser().resolve()
-    elif (env := os.environ.get("ZEIT_DB")):
+    elif (env := os.environ.get("TIMETRACK_DB")):
         path = Path(env).expanduser().resolve()
     else:
         path = Path.home() / ".zeiterfassung" / "zeit.db"

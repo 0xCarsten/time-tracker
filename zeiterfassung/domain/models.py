@@ -17,10 +17,10 @@ class EntryType(str, Enum):
     """Supported entry types for time tracking."""
 
     work = "work"
-    krank = "krank"
-    urlaub = "urlaub"
-    feiertag = "feiertag"
-    abwesend = "abwesend"
+    sick = "sick"
+    vacation = "vacation"
+    holiday = "holiday"
+    absent = "absent"
 
 
 @dataclass

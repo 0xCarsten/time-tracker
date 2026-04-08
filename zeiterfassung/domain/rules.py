@@ -117,22 +117,22 @@ def _work_delta(entry: TimeEntry) -> int:
 
 
 def _zero_delta(_entry: TimeEntry) -> int:
-    """Delta is zero for krank, urlaub, feiertag — no overtime adjustment."""
+    """Delta is zero for sick, vacation, holiday — no overtime adjustment."""
     return 0
 
 
 def _negative_target_delta(entry: TimeEntry) -> int:
-    """Delta is -daily_target for abwesend — a full day missed."""
+    """Delta is -daily_target for absent — a full day missed."""
     return -entry.daily_target_minutes
 
 
 # Strategy mapping per EntryType (GUD-002)
 DELTA_STRATEGIES: Dict[EntryType, Callable[[TimeEntry], int]] = {
     EntryType.work: _work_delta,
-    EntryType.krank: _zero_delta,
-    EntryType.urlaub: _zero_delta,
-    EntryType.feiertag: _zero_delta,
-    EntryType.abwesend: _negative_target_delta,
+    EntryType.sick: _zero_delta,
+    EntryType.vacation: _zero_delta,
+    EntryType.holiday: _zero_delta,
+    EntryType.absent: _negative_target_delta,
 }
 
 
@@ -158,27 +158,27 @@ def calculate_delta(entry: TimeEntry) -> int:
 # ---------------------------------------------------------------------------
 
 
-def is_workday(date: datetime.date, bundesland: str, allow_weekend: bool = False) -> bool:
+def is_workday(date: datetime.date, state: str, allow_weekend: bool = False) -> bool:
     """
     Determine if `date` is a billable workday.
 
     Returns True iff:
     - The date is a weekday (Mon–Fri) OR allow_weekend is True, AND
-    - The date is NOT a public holiday in the given Bundesland.
+    - The date is NOT a public holiday in the given state.
 
     A holiday falling on a weekend returns False (R7 — no compensatory day).
 
     Parameters:
         date: The date to test.
-        bundesland: German state code (e.g. 'BY').
+        state: German state code (e.g. 'BY').
         allow_weekend: If True, Saturday and Sunday are considered potential workdays.
 
     Returns:
         True if the date is a workday, False otherwise.
 
     Raises:
-        ValueError: If bundesland code is invalid.
+        ValueError: If state code is invalid.
     """
     if date.weekday() >= 5 and not allow_weekend:  # Saturday = 5, Sunday = 6
         return False
-    return is_public_holiday(date, bundesland) is None
+    return is_public_holiday(date, state) is None

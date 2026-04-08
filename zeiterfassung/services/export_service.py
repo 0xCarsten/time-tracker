@@ -22,10 +22,10 @@ class ExportService:
     Exports time entries to Excel (.xlsx) format.
 
     Depends on EntryService for data access (constructor injection, CRIT-003).
-    Column layout: Date, Type, Start, End, Pause (h), Delta (h), Running Saldo (h).
+    Column layout: Date, Type, Start, End, Pause (h), Delta (h), Running Balance (h).
     """
 
-    HEADERS = ["Date", "Type", "Start", "End", "Pause (h)", "Delta (h)", "Running Saldo (h)"]
+    HEADERS = ["Date", "Type", "Start", "End", "Pause (h)", "Delta (h)", "Running Balance (h)"]
 
     def __init__(self, entry_service: EntryService) -> None:
         """
@@ -60,7 +60,7 @@ class ExportService:
 
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Zeiterfassung"
+        ws.title = "Time Tracking"
 
         # Header row
         ws.append(self.HEADERS)
@@ -68,9 +68,9 @@ class ExportService:
             cell.font = Font(bold=True)
 
         # Data rows
-        running_saldo = 0
+        running_balance = 0
         for result in results:
-            running_saldo += result.delta_minutes
+            running_balance += result.delta_minutes
             entry = result.entry
             row = [
                 result.date.isoformat(),
@@ -79,7 +79,7 @@ class ExportService:
                 entry.end_time.strftime("%H:%M") if entry and entry.end_time else "",
                 round(entry.pause_minutes / 60, 2) if entry else 0.0,
                 round(result.delta_minutes / 60, 2),
-                round(running_saldo / 60, 2),
+                round(running_balance / 60, 2),
             ]
             ws.append(row)
 
@@ -88,7 +88,7 @@ class ExportService:
         summary = [
             "TOTAL", "", "", "", "",
             round(total_delta / 60, 2),
-            round(running_saldo / 60, 2),
+            round(running_balance / 60, 2),
         ]
         ws.append(summary)
         for cell in ws[ws.max_row]:
