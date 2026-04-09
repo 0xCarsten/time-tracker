@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import datetime
 
+import pytest
 
 from zeiterfassung.config import Settings
-from zeiterfassung.domain.models import EntryType, TimeEntry
+from zeiterfassung.domain.models import DuplicateEntryError, EntryType, TimeEntry
 from zeiterfassung.repository.entry_repo import EntryRepository
 from zeiterfassung.services.entry_service import EntryService
 
@@ -236,3 +237,164 @@ class TestAddAndOverwriteEntry:
         service.add_entry(date=datetime.date(2026, 4, 8), entry_type=EntryType.sick)
         assert service.delete_entry(datetime.date(2026, 4, 8)) is True
         assert service.get_entry(datetime.date(2026, 4, 8)) is None
+
+
+class TestStartEntry:
+    """Tests for EntryService.start_entry (TEST-003, TEST-004)."""
+
+    def test_start_entry_creates_open_work_entry(self, db_conn):
+        """start_entry inserts a work entry with start_time set and end_time=None (TEST-003)."""
+        service = _make_service(db_conn)
+        start_time = datetime.time(9, 0)
+        entry = service.start_entry(datetime.date(2026, 4, 8), start_time)
+
+        assert entry.id is not None
+        assert entry.entry_type == EntryType.work
+        assert entry.start_time == start_time
+        assert entry.end_time is None
+        assert entry.pause_minutes == 0
+        assert entry.is_complete is False
+
+    def test_start_entry_raises_duplicate_for_open_entry(self, db_conn):
+        """start_entry raises DuplicateEntryError when open entry already exists (TEST-004)."""
+        service = _make_service(db_conn)
+        service.start_entry(datetime.date(2026, 4, 8), datetime.time(9, 0))
+
+        with pytest.raises(DuplicateEntryError, match="2026-04-08"):
+            service.start_entry(datetime.date(2026, 4, 8), datetime.time(10, 0))
+
+    def test_start_entry_raises_duplicate_for_complete_entry(self, db_conn):
+        """start_entry raises DuplicateEntryError when a complete entry already exists (TEST-004)."""
+        service = _make_service(db_conn)
+        service.add_entry(
+            date=datetime.date(2026, 4, 8),
+            entry_type=EntryType.work,
+            time_range_raw="09:00-17:00",
+        )
+
+        with pytest.raises(DuplicateEntryError):
+            service.start_entry(datetime.date(2026, 4, 8), datetime.time(9, 0))
+
+    def test_start_entry_raises_duplicate_for_sick_entry(self, db_conn):
+        """start_entry raises DuplicateEntryError for any existing entry type (TEST-004)."""
+        service = _make_service(db_conn)
+        service.add_entry(date=datetime.date(2026, 4, 8), entry_type=EntryType.sick)
+
+        with pytest.raises(DuplicateEntryError):
+            service.start_entry(datetime.date(2026, 4, 8), datetime.time(9, 0))
+
+
+class TestStopEntry:
+    """Tests for EntryService.stop_entry (TEST-005 to TEST-008, TEST-018, TEST-019)."""
+
+    def _open_entry(
+        self, service: "EntryService", date: datetime.date, start: str
+    ) -> None:
+        """Helper to create an open work entry via start_entry."""
+        service.start_entry(date, datetime.time.fromisoformat(start))
+
+    def test_stop_entry_updates_end_time(self, db_conn):
+        """stop_entry sets end_time on an open entry and returns the updated TimeEntry (TEST-005)."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        self._open_entry(service, date, "09:00")
+
+        end_time = datetime.time(17, 0)
+        updated = service.stop_entry(date, end_time)
+
+        assert updated.end_time == end_time
+        assert updated.start_time == datetime.time(9, 0)
+        assert updated.is_complete is True
+
+    def test_stop_entry_sets_pause_minutes(self, db_conn):
+        """stop_entry correctly converts pause_decimal to pause_minutes."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        self._open_entry(service, date, "09:00")
+
+        updated = service.stop_entry(date, datetime.time(17, 30), pause_decimal=0.5)
+        assert updated.pause_minutes == 30
+
+    def test_stop_entry_raises_if_no_entry(self, db_conn):
+        """stop_entry raises ValueError if no entry exists for date (TEST-006)."""
+        service = _make_service(db_conn)
+        with pytest.raises(ValueError, match="zeit start"):
+            service.stop_entry(datetime.date(2026, 4, 8), datetime.time(17, 0))
+
+    def test_stop_entry_raises_if_already_complete(self, db_conn):
+        """stop_entry raises ValueError if entry is already complete (TEST-007)."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        service.add_entry(
+            date=date, entry_type=EntryType.work, time_range_raw="09:00-17:00"
+        )
+
+        with pytest.raises(ValueError, match="already complete"):
+            service.stop_entry(date, datetime.time(18, 0))
+
+    def test_stop_entry_raises_if_not_work_entry(self, db_conn):
+        """stop_entry raises ValueError if existing entry is not a work entry (TEST-008)."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        service.add_entry(date=date, entry_type=EntryType.sick)
+
+        with pytest.raises(ValueError, match="zeit start"):
+            service.stop_entry(date, datetime.time(17, 0))
+
+    def test_stop_entry_raises_if_end_before_start(self, db_conn):
+        """stop_entry raises ValueError when end_time < start_time (TEST-018)."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        self._open_entry(service, date, "17:00")
+
+        with pytest.raises(ValueError, match="End time is before start time"):
+            service.stop_entry(date, datetime.time(8, 0))
+
+    def test_stop_entry_raises_if_pause_exceeds_elapsed(self, db_conn):
+        """stop_entry raises ValueError when pause exceeds elapsed time (TEST-019)."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        self._open_entry(service, date, "09:00")
+
+        # Elapsed = 17:30 - 09:00 = 8.5h = 510 min; pause = 10h = 600 min → effective < 0
+        with pytest.raises(ValueError, match="pause exceeds elapsed time"):
+            service.stop_entry(date, datetime.time(17, 30), pause_decimal=10.0)
+
+    def test_stop_entry_raises_if_end_equals_start(self, db_conn):
+        """stop_entry raises ValueError when end_time == start_time (effective_minutes = 0)."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        self._open_entry(service, date, "09:00")
+
+        with pytest.raises(ValueError, match="End time is before start time"):
+            service.stop_entry(date, datetime.time(9, 0))
+
+
+class TestBuildDayResultsIncomplete:
+    """Tests for build_day_results with incomplete (open) work entries (TEST-009)."""
+
+    def test_incomplete_entry_yields_is_incomplete_flag(self, db_conn):
+        """build_day_results returns is_incomplete=True and delta_minutes=0 for open entry (TEST-009)."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        service.start_entry(date, datetime.time(9, 0))
+
+        results = service.build_day_results(date, date)
+        assert len(results) == 1
+        result = results[0]
+        assert result.is_incomplete is True
+        assert result.delta_minutes == 0
+        assert result.is_missing is False
+        assert result.entry is not None
+
+    def test_complete_entry_is_not_incomplete(self, db_conn):
+        """build_day_results returns is_incomplete=False for a fully complete work entry."""
+        service = _make_service(db_conn)
+        date = datetime.date(2026, 4, 8)
+        service.add_entry(
+            date=date, entry_type=EntryType.work, time_range_raw="09:00-17:00"
+        )
+
+        results = service.build_day_results(date, date)
+        assert len(results) == 1
+        assert results[0].is_incomplete is False

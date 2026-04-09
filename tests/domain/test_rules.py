@@ -11,7 +11,7 @@ import datetime
 
 import pytest
 
-from zeiterfassung.domain.models import EntryType, TimeEntry
+from zeiterfassung.domain.models import EntryType, IncompleteEntryError, TimeEntry
 from zeiterfassung.domain.rules import (
     calculate_delta,
     decimal_hours_to_minutes,
@@ -222,3 +222,55 @@ class TestIsWorkday:
     def test_regular_workday_not_holiday(self):
         """A regular Wednesday with no holiday is a workday."""
         assert is_workday(datetime.date(2026, 4, 8), "BY") is True
+
+
+# ---------------------------------------------------------------------------
+# IncompleteEntryError from calculate_delta (TEST-002)
+# ---------------------------------------------------------------------------
+
+
+class TestCalculateDeltaIncompleteEntry:
+    """Tests for IncompleteEntryError raised by calculate_delta (TEST-002)."""
+
+    def test_work_entry_missing_end_time_raises(self):
+        """calculate_delta raises IncompleteEntryError for work entry with no end_time."""
+        entry = _make_entry(EntryType.work, start="09:00", end=None)
+        with pytest.raises(IncompleteEntryError, match="incomplete"):
+            calculate_delta(entry)
+
+    def test_work_entry_missing_start_time_raises(self):
+        """calculate_delta raises IncompleteEntryError for work entry with no start_time."""
+        entry = _make_entry(EntryType.work, start=None, end="17:00")
+        with pytest.raises(IncompleteEntryError):
+            calculate_delta(entry)
+
+    def test_work_entry_no_times_raises(self):
+        """calculate_delta raises IncompleteEntryError for work entry with no times at all."""
+        entry = _make_entry(EntryType.work, start=None, end=None)
+        with pytest.raises(IncompleteEntryError):
+            calculate_delta(entry)
+
+    def test_sick_entry_no_times_does_not_raise(self):
+        """calculate_delta does NOT raise for a sick entry (non-work entries always complete)."""
+        entry = _make_entry(EntryType.sick)
+        assert calculate_delta(entry) == 0
+
+    def test_vacation_entry_does_not_raise(self):
+        """calculate_delta does NOT raise for a vacation entry."""
+        entry = _make_entry(EntryType.vacation)
+        assert calculate_delta(entry) == 0
+
+    def test_incomplete_entry_error_is_not_value_error(self):
+        """IncompleteEntryError is distinct from ValueError — callers can differentiate."""
+        entry = _make_entry(EntryType.work, start=None, end=None)
+        with pytest.raises(IncompleteEntryError):
+            calculate_delta(entry)
+        # Must NOT be caught by a bare `except ValueError`
+        caught_as_value_error = False
+        try:
+            calculate_delta(entry)
+        except ValueError:
+            caught_as_value_error = True
+        except IncompleteEntryError:
+            pass
+        assert caught_as_value_error is False

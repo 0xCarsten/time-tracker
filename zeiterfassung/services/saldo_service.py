@@ -12,6 +12,7 @@ import datetime
 from typing import Optional
 
 from zeiterfassung.config import Settings
+from zeiterfassung.domain.models import IncompleteEntryError
 from zeiterfassung.domain.rules import calculate_delta, is_workday
 from zeiterfassung.repository.entry_repo import EntryRepository
 
@@ -68,7 +69,12 @@ class BalanceService:
         entries = self._repo.get_range(effective_from, effective_to)
         entry_dates = {e.date for e in entries}
 
-        total = sum(calculate_delta(e) for e in entries)
+        total = 0
+        for e in entries:
+            try:
+                total += calculate_delta(e)
+            except IncompleteEntryError:
+                pass  # Incomplete entries contribute 0 to balance
 
         # Subtract daily_target for each missing workday in range (NEW-MIN-002:
         # call is_workday() from domain/rules.py directly, no EntryService dep).

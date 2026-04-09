@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime
+import zoneinfo
 from pathlib import Path
 from typing import Optional
 
@@ -28,6 +29,7 @@ from zeiterfassung.cli.formatters import (
 from zeiterfassung.config import load_settings, save_settings, Settings
 from zeiterfassung.domain.holidays import is_public_holiday
 from zeiterfassung.domain.models import DuplicateEntryError, EntryType
+from zeiterfassung.domain.rules import calculate_delta
 from zeiterfassung.repository.db import get_connection, get_db_path
 from zeiterfassung.repository.entry_repo import EntryRepository
 from zeiterfassung.services.entry_service import EntryService
@@ -103,6 +105,34 @@ def _parse_optional_date(date_str: Optional[str]) -> Optional[datetime.date]:
     return _parse_date(date_str) if date_str else None
 
 
+def _parse_time(time_str: str) -> datetime.time:
+    """
+    Parse a time string in HH:MM format.
+
+    Raises:
+        typer.BadParameter: If format is invalid.
+    """
+    try:
+        return datetime.time.fromisoformat(time_str)
+    except ValueError:
+        raise typer.BadParameter(f"Time must be HH:MM, got '{time_str}'")
+
+
+def _now_in_tz(timezone_str: str) -> datetime.time:
+    """
+    Return the current wall-clock time in the given IANA timezone as a naive datetime.time.
+
+    Raises:
+        zoneinfo.ZoneInfoNotFoundError: If the timezone string is not a valid IANA key.
+        KeyError: If the timezone string is rejected by the underlying zoneinfo implementation.
+    """
+    return (
+        datetime.datetime.now(tz=zoneinfo.ZoneInfo(timezone_str))
+        .time()
+        .replace(tzinfo=None)
+    )
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -123,6 +153,11 @@ def config(
         "--weekend-work/--no-weekend-work",
         help="Count Saturdays and Sundays as potential workdays (default: off).",
     ),
+    timezone: Optional[str] = typer.Option(
+        None,
+        "--timezone",
+        help='IANA timezone key (e.g. "Europe/Berlin", "UTC"). Validated against zoneinfo database (default: Europe/Berlin).',
+    ),
 ) -> None:
     """Configure weekly hours, state, and optional custom DB path."""
     try:
@@ -135,18 +170,93 @@ def config(
         err_console.print("[bold red]Error:[/bold red] weekly_hours must be positive.")
         raise typer.Exit(code=1)
 
+    existing = load_settings()
+    timezone_to_save = existing.timezone
+    if timezone is not None:
+        try:
+            zoneinfo.ZoneInfo(timezone)
+        except (zoneinfo.ZoneInfoNotFoundError, KeyError) as exc:
+            err_console.print(
+                f"[bold red]Error:[/bold red] Invalid timezone '{timezone}': {exc}"
+            )
+            raise typer.Exit(code=1)
+        timezone_to_save = timezone
+
     s = Settings(
         weekly_hours=weekly_hours,
         state=state,
         db_path=db_path or None,
         weekend_work=weekend_work,
+        timezone=timezone_to_save,
     )
     save_settings(s)
     db_info = f"\nDB path:      {db_path}" if db_path else ""
     console.print(
-        f"[green]Config saved:[/green] weekly_hours={weekly_hours}, state={state}, weekend_work={weekend_work}{db_info}\n"
+        f"[green]Config saved:[/green] weekly_hours={weekly_hours}, state={state}, "
+        f"weekend_work={weekend_work}, timezone={timezone_to_save}{db_info}\n"
         f"Daily target: {format_minutes_as_hhmm(s.daily_target_minutes, signed=False)}"
     )
+
+
+@app.command()
+def start(
+    time_str: Optional[str] = typer.Argument(
+        default=None, help="Custom start time as HH:MM (default: current time)"
+    ),
+) -> None:
+    """Record today's work start time. Defaults to the current wall-clock time."""
+    if time_str is not None:
+        start_time = _parse_time(time_str)
+    else:
+        settings = load_settings()
+        try:
+            start_time = _now_in_tz(settings.timezone)
+        except (zoneinfo.ZoneInfoNotFoundError, KeyError) as exc:
+            err_console.print(
+                f"[bold red]Error:[/bold red] Invalid timezone '{settings.timezone}': {exc}"
+            )
+            raise typer.Exit(code=1)
+
+    today = datetime.date.today()
+    with _get_services() as (entry_service, _, __):
+        try:
+            entry_service.start_entry(today, start_time)
+            console.print(
+                f"[green]Started:[/green] {start_time.strftime('%H:%M')} recorded for {today}"
+            )
+        except DuplicateEntryError as exc:
+            err_console.print(f"[bold red]Error:[/bold red] {exc}")
+            raise typer.Exit(code=1)
+
+
+@app.command()
+def stop(
+    pause: Optional[float] = typer.Option(
+        None, "--pause", help="Pause in decimal hours (e.g. 0.5)"
+    ),
+) -> None:
+    """Record current wall-clock time as today's work end time."""
+    settings = load_settings()
+    try:
+        end_time = _now_in_tz(settings.timezone)
+    except (zoneinfo.ZoneInfoNotFoundError, KeyError) as exc:
+        err_console.print(
+            f"[bold red]Error:[/bold red] Invalid timezone '{settings.timezone}': {exc}"
+        )
+        raise typer.Exit(code=1)
+
+    today = datetime.date.today()
+    with _get_services() as (entry_service, _, __):
+        try:
+            updated_entry = entry_service.stop_entry(today, end_time, pause)
+            delta = calculate_delta(updated_entry)
+            console.print(
+                f"[green]Stopped:[/green] {end_time.strftime('%H:%M')} recorded. "
+                f"Delta: {format_minutes_as_hhmm(delta)}"
+            )
+        except ValueError as exc:
+            err_console.print(f"[bold red]Error:[/bold red] {exc}")
+            raise typer.Exit(code=1)
 
 
 @app.command()

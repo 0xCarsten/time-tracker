@@ -21,6 +21,7 @@ _DEFAULTS: dict = {
     "weekly_hours": 40.0,
     "state": "BY",
     "weekend_work": False,
+    "timezone": "Europe/Berlin",
 }
 
 
@@ -38,6 +39,7 @@ class Settings:
     state: str
     db_path: Optional[str] = None
     weekend_work: bool = False
+    timezone: str = "Europe/Berlin"
 
     @property
     def daily_target_minutes(self) -> int:
@@ -77,6 +79,7 @@ def load_settings() -> Settings:
         state=str(data.get("state", _DEFAULTS["state"])),
         db_path=data.get("db_path") or None,
         weekend_work=bool(data.get("weekend_work", _DEFAULTS["weekend_work"])),
+        timezone=str(data.get("timezone", _DEFAULTS["timezone"])),
     )
 
 
@@ -93,6 +96,7 @@ def save_settings(s: Settings) -> None:
         "weekly_hours": s.weekly_hours,
         "state": s.state,
         "weekend_work": s.weekend_work,
+        "timezone": s.timezone,
     }
     if s.db_path:
         data["db_path"] = s.db_path

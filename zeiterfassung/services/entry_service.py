@@ -12,7 +12,13 @@ import datetime
 from typing import Optional
 
 from zeiterfassung.config import Settings
-from zeiterfassung.domain.models import DayResult, EntryType, TimeEntry
+from zeiterfassung.domain.models import (
+    DayResult,
+    DuplicateEntryError,
+    EntryType,
+    IncompleteEntryError,
+    TimeEntry,
+)
 from zeiterfassung.domain.rules import (
     calculate_delta,
     decimal_hours_to_minutes,
@@ -145,6 +151,93 @@ class EntryService:
         """
         return self._repo.delete_by_date(date)
 
+    def start_entry(self, date: datetime.date, start_time: datetime.time) -> TimeEntry:
+        """
+        Record start_time for today's work entry.
+
+        Creates a new work entry with start_time set and end_time=None.
+
+        Parameters:
+            date: The date to record (typically today).
+            start_time: The wall-clock start time (naive, already timezone-resolved by CLI).
+
+        Returns:
+            The persisted TimeEntry.
+
+        Raises:
+            DuplicateEntryError: If any entry already exists for this date.
+        """
+        existing = self._repo.get_by_date(date)
+        if existing is not None:
+            raise DuplicateEntryError(
+                f"An entry already exists for {date}. Use 'zeit edit' or 'zeit delete' to modify it."
+            )
+        now = datetime.datetime.now()
+        entry = TimeEntry(
+            date=date,
+            entry_type=EntryType.work,
+            start_time=start_time,
+            end_time=None,
+            pause_minutes=0,
+            daily_target_minutes=self._settings.daily_target_minutes,
+            created_at=now,
+            updated_at=now,
+        )
+        return self._repo.insert(entry)
+
+    def stop_entry(
+        self,
+        date: datetime.date,
+        end_time: datetime.time,
+        pause_decimal: Optional[float] = None,
+    ) -> TimeEntry:
+        """
+        Record end_time for an open work entry.
+
+        Parameters:
+            date: The date of the open entry (typically today).
+            end_time: The wall-clock end time (naive, already timezone-resolved by CLI).
+            pause_decimal: Optional pause in decimal hours (e.g. 0.5 = 30 min).
+
+        Returns:
+            The updated, persisted TimeEntry.
+
+        Raises:
+            ValueError: If no open work entry exists, if entry is already complete,
+                        if entry type is not work, or if effective minutes are non-positive.
+        """
+        existing = self._repo.get_by_date(date)
+        if (
+            existing is None
+            or existing.entry_type != EntryType.work
+            or existing.start_time is None
+        ):
+            raise ValueError(f"No open work entry for {date}. Run 'zeit start' first.")
+        if existing.end_time is not None:
+            raise ValueError(
+                f"Entry for {date} is already complete. Use 'zeit edit' to change it."
+            )
+        pause_minutes = (
+            int(pause_decimal * 60)
+            if pause_decimal is not None
+            else existing.pause_minutes
+        )
+        # Note: _time_to_minutes() exists in domain/rules.py but is intentionally private.
+        # This inline arithmetic is a deliberate duplicate kept here so the service layer
+        # avoids importing implementation-detail helpers from the domain rules module.
+        start_minutes = existing.start_time.hour * 60 + existing.start_time.minute
+        end_minutes = end_time.hour * 60 + end_time.minute
+        effective_minutes = end_minutes - start_minutes - pause_minutes
+        if effective_minutes <= 0:
+            raise ValueError(
+                "End time is before start time or pause exceeds elapsed time. "
+                "For overnight entries, use 'zeit edit'."
+            )
+        existing.end_time = end_time
+        existing.pause_minutes = pause_minutes
+        existing.updated_at = datetime.datetime.now()
+        return self._repo.upsert(existing)
+
     # ------------------------------------------------------------------
     # Read operations
     # ------------------------------------------------------------------
@@ -219,10 +312,19 @@ class EntryService:
         while current <= to_date:
             if current in entry_map:
                 entry = entry_map[current]
-                delta = calculate_delta(entry)
+                try:
+                    delta = calculate_delta(entry)
+                    is_incomplete = False
+                except IncompleteEntryError:
+                    delta = 0
+                    is_incomplete = True
                 results.append(
                     DayResult(
-                        date=current, entry=entry, delta_minutes=delta, is_missing=False
+                        date=current,
+                        entry=entry,
+                        delta_minutes=delta,
+                        is_missing=False,
+                        is_incomplete=is_incomplete,
                     )
                 )
             elif (

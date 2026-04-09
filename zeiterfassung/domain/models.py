@@ -8,7 +8,7 @@ The domain layer is I/O-free: no typer, rich, sqlite3, or openpyxl imports.
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
@@ -44,6 +44,13 @@ class TimeEntry:
     end_time: Optional[datetime.time] = None
     note: Optional[str] = None
 
+    @property
+    def is_complete(self) -> bool:
+        """True iff the entry is fully specified. Non-work entries are always complete."""
+        return self.entry_type != EntryType.work or (
+            self.start_time is not None and self.end_time is not None
+        )
+
 
 @dataclass
 class DayResult:
@@ -58,6 +65,7 @@ class DayResult:
     entry: Optional[TimeEntry]
     delta_minutes: int
     is_missing: bool
+    is_incomplete: bool = field(default=False)
 
 
 @dataclass
@@ -75,3 +83,7 @@ class MissingDay:
 
 class DuplicateEntryError(Exception):
     """Raised when inserting an entry that conflicts with an existing one (UNIQUE constraint)."""
+
+
+class IncompleteEntryError(Exception):
+    """Raised when delta calculation is attempted on a work entry missing start_time or end_time."""

@@ -13,6 +13,7 @@ import datetime
 from zeiterfassung.config import Settings
 from zeiterfassung.domain.models import EntryType, TimeEntry
 from zeiterfassung.repository.entry_repo import EntryRepository
+from zeiterfassung.services.entry_service import EntryService
 from zeiterfassung.services.saldo_service import BalanceService
 
 _NOW = datetime.datetime(2026, 4, 1, 9, 0, 0)
@@ -169,3 +170,40 @@ class TestSaldoWithMissingWorkdays:
             to_date=datetime.date(2026, 4, 12),
         )
         assert balance == 0
+
+
+class TestSaldoWithIncompleteEntries:
+    """Tests for balance computation excluding incomplete entries (TEST-010)."""
+
+    def test_incomplete_entry_contributes_zero_to_balance(self, db_conn):
+        """An open (incomplete) work entry contributes 0 to the balance (TEST-010)."""
+        repo = EntryRepository(db_conn)
+        settings = _settings()
+        entry_service = EntryService(repo, settings)
+        balance_service = BalanceService(repo, settings)
+
+        date = datetime.date(2026, 4, 8)
+        # Create an open (start-only) entry
+        entry_service.start_entry(date, datetime.time(9, 0))
+
+        # Balance should be 0 (not -480 as a missing day, not some other value)
+        balance = balance_service.compute(from_date=date, to_date=date)
+        assert balance == 0
+
+    def test_balance_mixes_complete_and_incomplete(self, db_conn):
+        """Balance correctly sums complete entries and ignores incomplete ones."""
+        repo = EntryRepository(db_conn)
+        settings = _settings()
+        entry_service = EntryService(repo, settings)
+        balance_service = BalanceService(repo, settings)
+
+        # Apr 8: complete work entry +60 min
+        _insert_work(repo, datetime.date(2026, 4, 8), "09:00", "18:00")
+        # Apr 9: open (incomplete) entry — contributes 0
+        entry_service.start_entry(datetime.date(2026, 4, 9), datetime.time(9, 0))
+
+        balance = balance_service.compute(
+            from_date=datetime.date(2026, 4, 8),
+            to_date=datetime.date(2026, 4, 9),
+        )
+        assert balance == 60

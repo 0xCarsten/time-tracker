@@ -1,6 +1,6 @@
 [project]
-name = "Time Tracker"
-version = "0.2.2"
+name = "zeiterfassung"
+version = "0.3.1"
 description = "Single-user CLI time tracking tool"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -16,6 +16,12 @@ dependencies = [
 dev = [
     "pytest>=8",
     "pytest-cov>=5",
+]
+# tzdata is required on Windows and other platforms where the OS does not bundle
+# IANA timezone data for Python's zoneinfo module. On Linux/macOS it is typically
+# available via the system tzdata package and does not need to be installed.
+windows = [
+    "tzdata>=2024",
 ]
 
 [project.scripts]

@@ -13,10 +13,10 @@ from __future__ import annotations
 
 import datetime
 import re
-from typing import Callable, Dict
+from typing import Callable
 
 from zeiterfassung.domain.holidays import is_public_holiday
-from zeiterfassung.domain.models import EntryType, TimeEntry
+from zeiterfassung.domain.models import EntryType, IncompleteEntryError, TimeEntry
 
 # Pre-compiled HH:MM pattern for time-range validation (GUD-003)
 _HM_RE = re.compile(r"^\d{2}:\d{2}$")
@@ -91,11 +91,8 @@ def _work_delta(entry: TimeEntry) -> int:
     Handles overnight shifts (end < start) by adding 1440 minutes.
     Raises ValueError if effective work time is negative.
     """
-    if entry.start_time is None or entry.end_time is None:
-        raise ValueError("Work entry requires start_time and end_time.")
-
-    start_min = _time_to_minutes(entry.start_time)
-    end_min = _time_to_minutes(entry.end_time)
+    start_min = _time_to_minutes(entry.start_time)  # type: ignore[arg-type]
+    end_min = _time_to_minutes(entry.end_time)  # type: ignore[arg-type]
 
     if end_min <= start_min:
         # Overnight shift
@@ -121,7 +118,7 @@ def _negative_target_delta(entry: TimeEntry) -> int:
 
 
 # Strategy mapping per EntryType (GUD-002)
-DELTA_STRATEGIES: Dict[EntryType, Callable[[TimeEntry], int]] = {
+_DELTA_STRATEGIES: dict[EntryType, Callable[[TimeEntry], int]] = {
     EntryType.work: _work_delta,
     EntryType.sick: _zero_delta,
     EntryType.vacation: _zero_delta,
@@ -141,9 +138,14 @@ def calculate_delta(entry: TimeEntry) -> int:
         Signed integer minutes: positive = overtime, negative = undertime.
 
     Raises:
+        IncompleteEntryError: If work entry is missing start_time or end_time.
         ValueError: If work entry has invalid time values.
     """
-    strategy = DELTA_STRATEGIES[entry.entry_type]
+    if not entry.is_complete:
+        raise IncompleteEntryError(
+            f"Entry for {entry.date} is incomplete (missing start or end time)."
+        )
+    strategy = _DELTA_STRATEGIES[entry.entry_type]
     return strategy(entry)
 
 

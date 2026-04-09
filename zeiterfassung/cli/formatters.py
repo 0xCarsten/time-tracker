@@ -51,7 +51,8 @@ def make_day_table(results: list[DayResult]) -> Table:
     """
     Build a Rich Table showing daily time entries with running balance.
 
-    Missing workdays are styled bold red.
+    Missing workdays and open (incomplete) entries are styled bold red.
+    Open entries show — in the Delta column.
     Columns: Date, Type, Start, End, Pause, Delta, Running Balance.
 
     Parameters:
@@ -71,20 +72,29 @@ def make_day_table(results: list[DayResult]) -> Table:
 
     running = 0
     for result in results:
-        running += result.delta_minutes
-        style = "bold red" if result.is_missing else ""
+        is_incomplete = result.is_incomplete
+        running += result.delta_minutes  # 0 for incomplete entries
+        style = "bold red" if (result.is_missing or is_incomplete) else ""
         entry = result.entry
 
-        if entry:
+        if is_incomplete and entry:
+            row_type = "open"
+            start = entry.start_time.strftime("%H:%M") if entry.start_time else ""
+            end = ""
+            pause = ""
+            delta_str = "—"
+        elif entry:
             row_type = entry.entry_type.value
             start = entry.start_time.strftime("%H:%M") if entry.start_time else ""
             end = entry.end_time.strftime("%H:%M") if entry.end_time else ""
             pause = format_minutes_as_hhmm(entry.pause_minutes, signed=False)
+            delta_str = format_minutes_as_hhmm(result.delta_minutes)
         else:
             row_type = "missing"
             start = ""
             end = ""
             pause = ""
+            delta_str = format_minutes_as_hhmm(result.delta_minutes)
 
         table.add_row(
             format_date(result.date),
@@ -92,7 +102,7 @@ def make_day_table(results: list[DayResult]) -> Table:
             start,
             end,
             pause,
-            format_minutes_as_hhmm(result.delta_minutes),
+            delta_str,
             format_minutes_as_hhmm(running),
             style=style,
         )
